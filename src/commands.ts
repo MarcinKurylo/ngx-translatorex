@@ -39,7 +39,8 @@ export class Commands {
             return Utils.showErrorMessage("Invalid key");
           }
           const translationsJson = await Utils.fetchJson();
-          Utils.setKey(key, translationsJson, selection);
+          Utils.setKey(key, translationsJson, selection.text);
+          Utils.insertSnippet(key, selection.languageId, selection.range);
           Utils.saveJson(translationsJson);
         });
       } else {

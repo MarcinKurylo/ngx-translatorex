@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { Selection } from './models';
 import * as fs from 'fs';
 
 export class Utils {
@@ -62,9 +63,32 @@ export class Utils {
     return sortedObj;
   }
 
-  public static getSelection(): string | undefined {
-    const selection = vscode.window.activeTextEditor?.selection;
-    return vscode.window.activeTextEditor?.document.getText(selection);
+  public static getSelection(): Selection {
+    const userSelection = vscode.window.activeTextEditor?.selection;
+    const selection: Selection = {
+      text: vscode.window.activeTextEditor?.document.getText(userSelection)!,
+      languageId: vscode.window.activeTextEditor?.document.languageId!,
+      range: new vscode.Range(userSelection!.start, userSelection!.end)
+    };
+    return selection;
+  }
+
+  public static prepareSnippet(key: string, languageId: string): vscode.SnippetString {
+    let snippet: vscode.SnippetString
+    switch(languageId) {
+      case 'typescript':
+        snippet = new vscode.SnippetString(`'${key}'`);
+        break;
+      case 'html':
+        snippet = new vscode.SnippetString(`{{ '${key}' | translate }}`);
+        break;
+    }
+    return snippet!
+  }
+
+  public static insertSnippet(key: string, languageId: string, range: vscode.Range) {
+    const snippet = this.prepareSnippet(key, languageId)
+    vscode.window.activeTextEditor?.insertSnippet(snippet, range);
   }
 
   public static showInfoMessage(message: string): void {

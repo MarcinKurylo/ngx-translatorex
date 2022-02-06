@@ -97,6 +97,7 @@ export class Utils {
     if (key.endsWith('.')) {
       return key.slice(0, -1);
     }
+    value = value.split(' ').join('_');
     return `${key}.${value}`;
   }
 

@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs'
+import * as fs from 'fs';
 
 export class Utils {
 
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   public static readonly EXTENSION_IDENTIFIER = 'ngx-translatorex';
 
   public static getConfigValue(key: string): string | undefined {
@@ -46,7 +47,11 @@ export class Utils {
         }
       }
     }
+  }
 
+  public static getSelection(): string | undefined {
+    const selection = vscode.window.activeTextEditor?.selection;
+    return vscode.window.activeTextEditor?.document.getText(selection);
   }
 
   public static showInfoMessage(message: string): void {

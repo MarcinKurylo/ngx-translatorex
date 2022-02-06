@@ -29,7 +29,7 @@ export class Utils {
   }
 
   public static async saveJson(updatedJson: unknown): Promise<void> {
-    fs.writeFileSync((await Utils.getUri()).fsPath, JSON.stringify(updatedJson, null, 2));
+    fs.writeFileSync((await Utils.getUri()).fsPath, JSON.stringify(updatedJson, null, 2) + '\n');
   }
 
   public static setKey(key: string, json: {[key:string]: any}, value: string): any {
@@ -47,6 +47,19 @@ export class Utils {
         }
       }
     }
+  }
+
+  public static sortJson(json: {[key: string]: any}): {[key: string]: any} {
+    const sortedObj: {[key: string]: any} = {};
+    const keys = Object.keys(json).sort((key1, key2) => key1.toLocaleLowerCase().localeCompare(key2.toLocaleLowerCase()));
+    for(let key of keys){
+      if(typeof json[key] === 'object'){
+        sortedObj[key] = this.sortJson(json[key]);
+      } else {
+        sortedObj[key] = json[key];
+      }
+    }
+    return sortedObj;
   }
 
   public static getSelection(): string | undefined {

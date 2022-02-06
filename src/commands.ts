@@ -47,4 +47,12 @@ export class Commands {
       }
     });
   }
+
+  public static sortJson(): vscode.Disposable {
+    return vscode.commands.registerCommand('ngx-translatorex.sortJson', async () => {
+      const translationsJson = (await Utils.fetchJson());
+      const sortedJson = Utils.sortJson(translationsJson);
+      Utils.saveJson(sortedJson);
+    });
+  }
 }

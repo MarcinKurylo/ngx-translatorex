@@ -10,9 +10,8 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:ngx-translatorex.setLanguage",
-		"onCommand:ngx-translatorex.setPath",
-		"onCommand:ngx-translatorex.addNewTranslation"
+		"workspaceContains:angular.json",
+		"workspaceContains:.angular-cli.json"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -27,7 +26,19 @@
 			},
 			{
 				"command": "ngx-translatorex.addNewTranslation",
-				"title": "ngx-translatorex: Add new translation"
+				"title": "ngx-translatorex: Add new translation",
+				"enablement": "editorLangId == typescript && editorHasSelection || editorLangId == html && editorHasSelection"
+			},
+			{
+				"command": "ngx-translatorex.sortJson",
+				"title": "ngx-translatorex: Sort Main i18n json file"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "ngx-translatorex.addNewTranslation",
+				"key": "Ctrl+t",
+				"mac": "Cmd+t"
 			}
 		],
 		"configuration":[

@@ -5,7 +5,8 @@ export const activate = async (context: vscode.ExtensionContext) => {
 	const commands = [
 		Commands.setLanguage(),
 		Commands.setPath(),
-		Commands.addNewTranslation()
+		Commands.addNewTranslation(),
+		Commands.sortJson()
 	];
 
 	context.subscriptions.push(...commands);

@@ -25,6 +25,10 @@
 				"title": "ngx-translatorex: Set Path to i18n folder"
 			},
 			{
+				"command": "ngx-translatorex.setMode",
+				"title": "ngx-translatorex: Set extension mode"
+			},
+			{
 				"command": "ngx-translatorex.addNewTranslation",
 				"title": "ngx-translatorex: Add new translation",
 				"enablement": "editorLangId == typescript && editorHasSelection || editorLangId == html && editorHasSelection"
@@ -55,7 +59,13 @@
 						"type":"string",
 						"default": "**/assets/i18n/",
 						"scope": "resource",
-						"description": "Path"
+						"description": "i18n folder path"
+					},
+					"ngx-translatorex.mode": {
+						"type": "string",
+						"default": "key",
+						"scope": "resource",
+						"description": "Mode: can be key or scope"
 					}
 				}
 			}

@@ -3,10 +3,11 @@ import { Commands } from './commands';
 
 export const activate = async (context: vscode.ExtensionContext) => {
 	const commands = [
-		Commands.setLanguage(),
-		Commands.setPath(),
-		Commands.addNewTranslation(),
-		Commands.sortJson()
+		Commands.registerSetLanguage(),
+		Commands.registerSetPath(),
+		Commands.registerAddNewTranslation(),
+		Commands.registerSortJson(),
+		Commands.registerSetMode()
 	];
 
 	context.subscriptions.push(...commands);

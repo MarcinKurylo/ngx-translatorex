@@ -30,7 +30,10 @@ export class Utils {
   }
 
   public static checkIfKeyValid(key: string): boolean {
-    return !key.startsWith('.') || !key.includes('..') || !key.endsWith('.');
+    if (this.getConfigValue('mode') === 'key') {
+      return !key.startsWith('.') || !key.includes('..') || !key.endsWith('.');
+    }
+    return !key.startsWith('.') || !key.includes('..');
   }
 
   public static async saveJson(updatedJson: unknown): Promise<void> {
@@ -88,6 +91,13 @@ export class Utils {
         break;
     }
     return snippet!;
+  }
+
+  public static generateKey(key: string, value: string): string {
+    if (key.endsWith('.')) {
+      return key.slice(0, -1);
+    }
+    return `${key}.${value}`;
   }
 
   public static insertSnippet(key: string, languageId: string, range: vscode.Range) {

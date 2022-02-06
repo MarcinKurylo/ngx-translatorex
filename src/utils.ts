@@ -29,6 +29,10 @@ export class Utils {
     }
   }
 
+  public static checkIfKeyValid(key: string): boolean {
+    return !key.startsWith('.') || !key.includes('..') || !key.endsWith('.');
+  }
+
   public static async saveJson(updatedJson: unknown): Promise<void> {
     fs.writeFileSync((await Utils.getUri()).fsPath, JSON.stringify(updatedJson, null, 2) + '\n');
   }
@@ -74,7 +78,7 @@ export class Utils {
   }
 
   public static prepareSnippet(key: string, languageId: string): vscode.SnippetString {
-    let snippet: vscode.SnippetString
+    let snippet: vscode.SnippetString;
     switch(languageId) {
       case 'typescript':
         snippet = new vscode.SnippetString(`'${key}'`);
@@ -83,11 +87,11 @@ export class Utils {
         snippet = new vscode.SnippetString(`{{ '${key}' | translate }}`);
         break;
     }
-    return snippet!
+    return snippet!;
   }
 
   public static insertSnippet(key: string, languageId: string, range: vscode.Range) {
-    const snippet = this.prepareSnippet(key, languageId)
+    const snippet = this.prepareSnippet(key, languageId);
     vscode.window.activeTextEditor?.insertSnippet(snippet, range);
   }
 

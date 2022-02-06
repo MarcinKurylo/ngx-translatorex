@@ -35,7 +35,7 @@ export class Commands {
       const selection = Utils.getSelection();
       if (selection) {
         vscode.window.showInputBox({title: 'Set key', prompt: "Can be nested (e.g. 'key1.key2)"}).then(async key => {
-          if (!key) {
+          if (!key || Utils.checkIfKeyValid(key)) {
             return Utils.showErrorMessage("Invalid key");
           }
           const translationsJson = await Utils.fetchJson();

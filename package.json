@@ -10,14 +10,43 @@
 		"Other"
 	],
 	"activationEvents": [
-        "onCommand:ngx-translatorex.helloWorld"
+		"onCommand:ngx-translatorex.setLanguage",
+		"onCommand:ngx-translatorex.setPath",
+		"onCommand:ngx-translatorex.addNewTranslation"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "ngx-translatorex.helloWorld",
-				"title": "Hello World"
+				"command": "ngx-translatorex.setLanguage",
+				"title": "ngx-translatorex: Set Main i18n json file"
+			},
+			{
+				"command": "ngx-translatorex.setPath",
+				"title": "ngx-translatorex: Set Path to i18n folder"
+			},
+			{
+				"command": "ngx-translatorex.addNewTranslation",
+				"title": "ngx-translatorex: Add new translation"
+			}
+		],
+		"configuration":[
+			{
+				"title": "ngx-translatorex",
+				"properties": {
+					"ngx-translatorex.language": {
+						"type":"string",
+						"default": "en",
+						"scope": "resource",
+						"description": "Main language"
+					},
+					"ngx-translatorex.path": {
+						"type":"string",
+						"default": "**/assets/i18n/",
+						"scope": "resource",
+						"description": "Path"
+					}
+				}
 			}
 		]
 	},

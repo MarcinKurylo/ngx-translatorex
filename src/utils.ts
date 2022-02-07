@@ -31,16 +31,16 @@ export class Utils {
 
   public static checkIfKeyValid(key: string): boolean {
     if (this.getConfigValue('mode') === 'key') {
-      return !key.startsWith('.') || !key.includes('..') || !key.endsWith('.');
+      return !key.startsWith('.') && !key.includes('..') && !key.endsWith('.');
     }
-    return !key.startsWith('.') || !key.includes('..');
+    return !key.startsWith('.') && !key.includes('..')
   }
 
   public static async saveJson(updatedJson: unknown): Promise<void> {
     fs.writeFileSync((await Utils.getUri()).fsPath, JSON.stringify(updatedJson, null, 2) + '\n');
   }
 
-  public static setKey(key: string, json: {[key:string]: any}, value: string): any {
+  public static setKey(key: string, json: {[key:string]: any}, value: string, params: string[]): any {
     const keys = key.split('.');
     if (keys.length === 0) { return; }
     if (!Reflect.has(json, keys[0])) {
@@ -49,9 +49,14 @@ export class Utils {
     for (const objectKey in json) {
       if (objectKey === keys[0]) {
         if (keys.length === 1) {
+          if (params?.length) {
+            params.forEach(param => {
+              value += ` {{ ${param} }}`;
+            });
+          }
           return json[objectKey] = value;
         } else {
-          return this.setKey(keys.slice(1).join('.'), json[objectKey], value);
+          return this.setKey(keys.slice(1).join('.'), json[objectKey], value, params);
         }
       }
     }
@@ -80,17 +85,30 @@ export class Utils {
     return selection;
   }
 
-  public static prepareSnippet(key: string, languageId: string): vscode.SnippetString {
+  public static prepareSnippet(key: string, languageId: string, params: string[]): vscode.SnippetString {
     let snippet: vscode.SnippetString;
     switch(languageId) {
       case 'typescript':
         snippet = new vscode.SnippetString(`'${key}'`);
         break;
       case 'html':
-        snippet = new vscode.SnippetString(`{{ '${key}' | translate }}`);
+        let snippetText = `{{ '${key}' | translate }}`
+        if (params?.length) {
+          snippetText = `${snippetText.split(' }}')[0]}:{`
+          params.forEach(param => {
+            snippetText += ` ${param}:'value'`;
+          });
+          snippetText += '} }}';
+        }
+        snippet = new vscode.SnippetString(snippetText);
         break;
     }
     return snippet!;
+  }
+
+  public static splitParams(key: string): [string, string[]] {
+    const [newKey, ...params] = key.split(':');
+    return [newKey, params];
   }
 
   public static generateKey(key: string, value: string): string {
@@ -101,8 +119,8 @@ export class Utils {
     return `${key}.${value}`;
   }
 
-  public static insertSnippet(key: string, languageId: string, range: vscode.Range) {
-    const snippet = this.prepareSnippet(key, languageId);
+  public static insertSnippet(key: string, languageId: string, range: vscode.Range, params: string[]) {
+    const snippet = this.prepareSnippet(key, languageId, params);
     vscode.window.activeTextEditor?.insertSnippet(snippet, range);
   }
 

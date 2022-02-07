@@ -52,10 +52,12 @@ export class Commands {
           if (!key || !Utils.checkIfKeyValid(key)) {
             return Utils.showErrorMessage("Invalid key");
           }
+          let params: string[];
+          [key, params] = Utils.splitParams(key);
           key = mode === 'key' ? key : Utils.generateKey(key, selection.text);
           const translationsJson = await Utils.fetchJson();
-          Utils.setKey(key, translationsJson, selection.text);
-          Utils.insertSnippet(key, selection.languageId, selection.range);
+          Utils.setKey(key, translationsJson, selection.text, params);
+          Utils.insertSnippet(key, selection.languageId, selection.range, params);
           Utils.saveJson(translationsJson);
         });
       } else {

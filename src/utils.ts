@@ -8,32 +8,32 @@ export class Utils {
   public static readonly EXTENSION_IDENTIFIER = 'ngx-translatorex';
 
   public static getConfigValue(key: string): string | undefined {
-    return vscode.workspace.getConfiguration(this.EXTENSION_IDENTIFIER).get(key);
+    return vscode.workspace.getConfiguration(Utils.EXTENSION_IDENTIFIER).get(key);
   }
 
   public static updateConfigValue(key: string, newValue: string): void {
-    vscode.workspace.getConfiguration(this.EXTENSION_IDENTIFIER).update(key, newValue);
+    vscode.workspace.getConfiguration(Utils.EXTENSION_IDENTIFIER).update(key, newValue);
   }
 
   public static async getUri(): Promise<vscode.Uri> {
-    return (await vscode.workspace.findFiles(`${this.getConfigValue('path')}${this.getConfigValue('language')}.json`))[0];
+    return (await vscode.workspace.findFiles(`${Utils.getConfigValue('path')}${Utils.getConfigValue('language')}.json`))[0];
   }
 
   public static async fetchJson(): Promise<any> {
     try {
-      const uri = await this.getUri();
+      const uri = await Utils.getUri();
       const file = await vscode.workspace.fs.readFile(uri);
       return JSON.parse(file.toLocaleString());
     } catch (e) {
-      this.showErrorMessage(`No file with ${this.getConfigValue('language')} translations found`);
+      Utils.showErrorMessage(`No file with ${Utils.getConfigValue('language')} translations found`);
     }
   }
 
   public static checkIfKeyValid(key: string): boolean {
-    if (this.getConfigValue('mode') === 'key') {
+    if (Utils.getConfigValue('mode') === 'key') {
       return !key.startsWith('.') && !key.includes('..') && !key.endsWith('.');
     }
-    return !key.startsWith('.') && !key.includes('..')
+    return !key.startsWith('.') && !key.includes('..');
   }
 
   public static async saveJson(updatedJson: unknown): Promise<void> {
@@ -54,9 +54,12 @@ export class Utils {
               value += ` {{ ${param} }}`;
             });
           }
+          if (typeof json[objectKey] === 'string' || (typeof json[objectKey] === 'object' && !!Object.keys(json[objectKey]).length)) {
+            Utils.showInfoMessage(`Existing i18n key overwritten with new value!`);
+          }
           return json[objectKey] = value;
         } else {
-          return this.setKey(keys.slice(1).join('.'), json[objectKey], value, params);
+          return Utils.setKey(keys.slice(1).join('.'), json[objectKey], value, params);
         }
       }
     }
@@ -67,7 +70,7 @@ export class Utils {
     const keys = Object.keys(json).sort((key1, key2) => key1.toLocaleLowerCase().localeCompare(key2.toLocaleLowerCase()));
     for(let key of keys){
       if(typeof json[key] === 'object'){
-        sortedObj[key] = this.sortJson(json[key]);
+        sortedObj[key] = Utils.sortJson(json[key]);
       } else {
         sortedObj[key] = json[key];
       }
@@ -92,9 +95,9 @@ export class Utils {
         snippet = new vscode.SnippetString(`'${key}'`);
         break;
       case 'html':
-        let snippetText = `{{ '${key}' | translate }}`
+        let snippetText = `{{ '${key}' | translate }}`;
         if (params?.length) {
-          snippetText = `${snippetText.split(' }}')[0]}:{`
+          snippetText = `${snippetText.split(' }}')[0]}:{`;
           params.forEach(param => {
             snippetText += ` ${param}:'value'`;
           });
@@ -115,12 +118,15 @@ export class Utils {
     if (key.endsWith('.')) {
       return key.slice(0, -1);
     }
-    value = value.split(' ').join('_');
+    value = value.toLocaleLowerCase().replace(/[`~!@#$%^&*()_|+\-=?;:'",<>\{\}\[\]\\\/]/gi, ' ').split(' ').join('_').replace('__', '_');
+    if (value.endsWith('_')) {
+      value = value.slice(0, -1);
+    }
     return `${key}.${value}`;
   }
 
   public static insertSnippet(key: string, languageId: string, range: vscode.Range, params: string[]) {
-    const snippet = this.prepareSnippet(key, languageId, params);
+    const snippet = Utils.prepareSnippet(key, languageId, params);
     vscode.window.activeTextEditor?.insertSnippet(snippet, range);
   }
 

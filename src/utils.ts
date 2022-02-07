@@ -1,18 +1,16 @@
 import * as vscode from 'vscode';
 import { Selection } from './models';
 import * as fs from 'fs';
+import { ConfigValue, EXTENSION_IDENTIFIER } from './const';
 
 export class Utils {
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  public static readonly EXTENSION_IDENTIFIER = 'ngx-translatorex';
-
-  public static getConfigValue(key: string): string | undefined {
-    return vscode.workspace.getConfiguration(Utils.EXTENSION_IDENTIFIER).get(key);
+  public static getConfigValue(key: ConfigValue): string | undefined {
+    return vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).get(key);
   }
 
   public static updateConfigValue(key: string, newValue: string): void {
-    vscode.workspace.getConfiguration(Utils.EXTENSION_IDENTIFIER).update(key, newValue);
+    vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).update(key, newValue);
   }
 
   public static async getUri(): Promise<vscode.Uri> {
@@ -37,10 +35,14 @@ export class Utils {
   }
 
   public static async saveJson(updatedJson: unknown): Promise<void> {
-    fs.writeFileSync((await Utils.getUri()).fsPath, JSON.stringify(updatedJson, null, 2) + '\n');
+    try {
+      fs.writeFileSync((await Utils.getUri()).fsPath, JSON.stringify(updatedJson, null, 2) + '\n');
+    } catch (e) {
+      Utils.showErrorMessage(`Save json failed`);
+    }
   }
 
-  public static setKey(key: string, json: {[key:string]: any}, value: string, params: string[]): any {
+  public static setKey(key: string, json: {[key:string]: any}, value: string): any {
     const keys = key.split('.');
     if (keys.length === 0) { return; }
     if (!Reflect.has(json, keys[0])) {
@@ -49,17 +51,12 @@ export class Utils {
     for (const objectKey in json) {
       if (objectKey === keys[0]) {
         if (keys.length === 1) {
-          if (params?.length) {
-            params.forEach(param => {
-              value += ` {{ ${param} }}`;
-            });
-          }
           if (typeof json[objectKey] === 'string' || (typeof json[objectKey] === 'object' && !!Object.keys(json[objectKey]).length)) {
             Utils.showInfoMessage(`Existing i18n key overwritten with new value!`);
           }
           return json[objectKey] = value;
         } else {
-          return Utils.setKey(keys.slice(1).join('.'), json[objectKey], value, params);
+          return Utils.setKey(keys.slice(1).join('.'), json[objectKey], value);
         }
       }
     }
@@ -88,7 +85,7 @@ export class Utils {
     return selection;
   }
 
-  public static prepareSnippet(key: string, languageId: string, params: string[]): vscode.SnippetString {
+  public static prepareSnippet(key: string, languageId: string, paramsMap: {[key:string]: string}): vscode.SnippetString {
     let snippet: vscode.SnippetString;
     switch(languageId) {
       case 'typescript':
@@ -96,11 +93,11 @@ export class Utils {
         break;
       case 'html':
         let snippetText = `{{ '${key}' | translate }}`;
-        if (params?.length) {
+        if (Object.keys(paramsMap).length) {
           snippetText = `${snippetText.split(' }}')[0]}:{`;
-          params.forEach(param => {
-            snippetText += ` ${param}:'value'`;
-          });
+          for (const key in paramsMap) {
+            snippetText += ` ${key}:${paramsMap[key]}`;
+          }
           snippetText += '} }}';
         }
         snippet = new vscode.SnippetString(snippetText);
@@ -109,24 +106,45 @@ export class Utils {
     return snippet!;
   }
 
-  public static splitParams(key: string): [string, string[]] {
-    const [newKey, ...params] = key.split(':');
-    return [newKey, params];
+  public static splitParamNames(key: string): [string, string[]] {
+    const [newKey, ...paramNames] = key.split(':');
+    return [newKey, paramNames];
+  }
+
+  public static checkForParamsInSelection(selection: string): RegExpMatchArray[] {
+    const paramTest = new RegExp(/{{.*?}}/, 'g');
+    const params = [...selection.matchAll(paramTest)];
+    return params;
+  }
+
+  public static renameParams(selection: string, paramNames: string[]): string {
+    const params = Utils.checkForParamsInSelection(selection)
+    params.forEach((param, id) => {
+      if (paramNames[id]) {
+        selection = selection.replace(param[0], ` {{ ${paramNames[id]} }} `);
+      }
+    });
+    return selection;
   }
 
   public static generateKey(key: string, value: string): string {
     if (key.endsWith('.')) {
       return key.slice(0, -1);
     }
-    value = value.toLocaleLowerCase().replace(/[`~!@#$%^&*()_|+\-=?;:'",<>\{\}\[\]\\\/]/gi, ' ').split(' ').join('_').replace('__', '_');
+    value = value.toLocaleLowerCase().replace(/[`~!@#$%^&*()_|+\-=?;:{}'",<>\{\}\[\]\\\/]/gi, ' ').split(' ').join('_').replace('__', '_');
+    const underscoreTest = new RegExp(/_{2,}/, 'g');
+    const underscoreMatches = [...value.matchAll(underscoreTest)];
+    underscoreMatches.forEach(match => {
+      value = value.replace(match[0], '_');
+    });
     if (value.endsWith('_')) {
       value = value.slice(0, -1);
     }
     return `${key}.${value}`;
   }
 
-  public static insertSnippet(key: string, languageId: string, range: vscode.Range, params: string[]) {
-    const snippet = Utils.prepareSnippet(key, languageId, params);
+  public static insertSnippet(key: string, languageId: string, range: vscode.Range, paramsMap: {[key:string]: string}) {
+    const snippet = Utils.prepareSnippet(key, languageId, paramsMap);
     vscode.window.activeTextEditor?.insertSnippet(snippet, range);
   }
 

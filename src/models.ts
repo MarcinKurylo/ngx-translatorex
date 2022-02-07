@@ -3,4 +3,4 @@ export type Selection = {
   text: string,
   languageId: string,
   range: vscode.Range
-}
+};

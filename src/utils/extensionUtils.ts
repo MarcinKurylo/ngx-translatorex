@@ -38,7 +38,7 @@ export class ExtensionUtils {
       if (typeof object[key] === 'object') {
         tail = tail ? `${tail}.${key}` : key;
         flatObject = {...flatObject, ...ExtensionUtils.flattenObject(object[key], tail)};
-        tail = tail?.split('.').slice(0, -1).join('.')
+        tail = tail?.split('.').slice(0, -1).join('.');
       } else {
         flatObject[tail? `${tail}.${key}` : key] = object[key];
       }

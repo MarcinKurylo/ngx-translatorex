@@ -72,7 +72,7 @@ export class Commands {
           const translationsJson = await FileSystemManager.fetchJson();
           ExtensionUtils.setKey(key, translationsJson, selection.text);
           ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
-          FileSystemManager.cache[key] = selection.text
+          FileSystemManager.cache[key] = selection.text;
           FileSystemManager.saveJson(translationsJson);
         });
       } else {

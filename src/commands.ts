@@ -72,6 +72,7 @@ export class Commands {
           const translationsJson = await FileSystemManager.fetchJson();
           ExtensionUtils.setKey(key, translationsJson, selection.text);
           ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
+          FileSystemManager.cache[key] = selection.text
           FileSystemManager.saveJson(translationsJson);
         });
       } else {
@@ -83,7 +84,7 @@ export class Commands {
   public static registerSortJson(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SORT_JSON}`, async () => {
       const translationsJson = (await FileSystemManager.fetchJson());
-      const sortedJson = ExtensionUtils.sortJson(translationsJson);
+      const sortedJson = ExtensionUtils.sortObject(translationsJson);
       FileSystemManager.saveJson(sortedJson);
     });
   }

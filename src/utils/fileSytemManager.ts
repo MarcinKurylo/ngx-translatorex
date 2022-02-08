@@ -3,6 +3,9 @@ import * as fs from 'fs';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
 export class FileSystemManager {
+
+  public static cache: {[key:string]: string};
+
   public static async getUri(): Promise<vscode.Uri> {
     return (await vscode.workspace.findFiles(`${ExtensionConfigManager.getConfigValue('path')}${ExtensionConfigManager.getConfigValue('language')}.json`))[0];
   }

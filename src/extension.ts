@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { Commands } from './commands';
+import { ExtensionUtils } from './utils/extensionUtils';
 import { FileSystemManager } from './utils/fileSytemManager';
 
 export const activate = async (context: vscode.ExtensionContext) => {
-	const cache = await FileSystemManager.fetchJson();
+	FileSystemManager.cache = ExtensionUtils.flattenObject(await FileSystemManager.fetchJson());
 	const commands = [
 		Commands.registerSetLanguage(),
 		Commands.registerSetPath(),
@@ -22,7 +23,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 			let hoveredMatch;
 			for (const match of matches) {
 				const matchStart = match.index!;
-				const matchEnd = matchStart + match[0].length
+				const matchEnd = matchStart + match[0].length;
 				if (matchStart <= position.character && matchEnd >= position.character) {
 					hoveredMatch = match[1];
 					break;
@@ -30,7 +31,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 
 			}
 			if (hoveredMatch) {
-				return new vscode.Hover(`${hoveredMatch}`);
+				return new vscode.Hover(`${FileSystemManager.cache[hoveredMatch] ??' No value for this key!'}`);
 			}
 		}
 	}));

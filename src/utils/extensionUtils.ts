@@ -12,34 +12,48 @@ export class ExtensionUtils {
     return !key.startsWith('.') && !key.includes('..');
   }
 
-  public static setKey(key: string, json: {[key:string]: any}, value: string): any {
+  public static setKey(key: string, object: {[key:string]: any}, value: string): any {
     const keys = key.split('.');
     if (keys.length === 0) { return; }
-    if (!Reflect.has(json, keys[0])) {
-      json[keys[0]] = {};
+    if (!Reflect.has(object, keys[0])) {
+      object[keys[0]] = {};
     }
-    for (const objectKey in json) {
+    for (const objectKey in object) {
       if (objectKey === keys[0]) {
         if (keys.length === 1) {
-          if (typeof json[objectKey] === 'string' || (typeof json[objectKey] === 'object' && !!Object.keys(json[objectKey]).length)) {
+          if (typeof object[objectKey] === 'string' || (typeof object[objectKey] === 'object' && !!Object.keys(object[objectKey]).length)) {
             NotificationManager.showInfoMessage(`Existing i18n key overwritten with new value!`);
           }
-          return json[objectKey] = value;
+          return object[objectKey] = value;
         } else {
-          return ExtensionUtils.setKey(keys.slice(1).join('.'), json[objectKey], value);
+          return ExtensionUtils.setKey(keys.slice(1).join('.'), object[objectKey], value);
         }
       }
     }
   }
 
-  public static sortJson(json: {[key: string]: any}): {[key: string]: any} {
-    const sortedObj: {[key: string]: any} = {};
-    const keys = Object.keys(json).sort((key1, key2) => key1.toLocaleLowerCase().localeCompare(key2.toLocaleLowerCase()));
-    for(let key of keys){
-      if(typeof json[key] === 'object'){
-        sortedObj[key] = ExtensionUtils.sortJson(json[key]);
+  public static flattenObject(object: {[key: string]: any}, tail?: string): {[key: string]: string} {
+    let flatObject: {[key: string]: string} = {};
+    for (const key in object) {
+      if (typeof object[key] === 'object') {
+        tail = tail ? `${tail}.${key}` : key;
+        flatObject = {...flatObject, ...ExtensionUtils.flattenObject(object[key], tail)};
+        tail = tail?.split('.').slice(0, -1).join('.')
       } else {
-        sortedObj[key] = json[key];
+        flatObject[tail? `${tail}.${key}` : key] = object[key];
+      }
+    }
+    return flatObject;
+  }
+
+  public static sortObject(object: {[key: string]: any}): {[key: string]: any} {
+    const sortedObj: {[key: string]: any} = {};
+    const keys = Object.keys(object).sort((key1, key2) => key1.toLocaleLowerCase().localeCompare(key2.toLocaleLowerCase()));
+    for(let key of keys){
+      if(typeof object[key] === 'object'){
+        sortedObj[key] = ExtensionUtils.sortObject(object[key]);
+      } else {
+        sortedObj[key] = object[key];
       }
     }
     return sortedObj;

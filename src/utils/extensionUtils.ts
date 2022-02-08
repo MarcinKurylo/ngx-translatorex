@@ -1,45 +1,15 @@
 import * as vscode from 'vscode';
-import { Selection } from './models';
-import * as fs from 'fs';
-import { ConfigValue, EXTENSION_IDENTIFIER } from './const';
+import { Selection } from '../models';
+import { ExtensionConfigManager } from './extensionConfigManager';
+import { NotificationManager } from './notificationManager';
 
-export class Utils {
-
-  public static getConfigValue(key: ConfigValue): string | undefined {
-    return vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).get(key);
-  }
-
-  public static updateConfigValue(key: string, newValue: string): void {
-    vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).update(key, newValue);
-  }
-
-  public static async getUri(): Promise<vscode.Uri> {
-    return (await vscode.workspace.findFiles(`${Utils.getConfigValue('path')}${Utils.getConfigValue('language')}.json`))[0];
-  }
-
-  public static async fetchJson(): Promise<any> {
-    try {
-      const uri = await Utils.getUri();
-      const file = await vscode.workspace.fs.readFile(uri);
-      return JSON.parse(file.toLocaleString());
-    } catch (e) {
-      Utils.showErrorMessage(`No file with ${Utils.getConfigValue('language')} translations found`);
-    }
-  }
+export class ExtensionUtils {
 
   public static checkIfKeyValid(key: string): boolean {
-    if (Utils.getConfigValue('mode') === 'key') {
+    if (ExtensionConfigManager.getConfigValue('mode') === 'key') {
       return !key.startsWith('.') && !key.includes('..') && !key.endsWith('.');
     }
     return !key.startsWith('.') && !key.includes('..');
-  }
-
-  public static async saveJson(updatedJson: unknown): Promise<void> {
-    try {
-      fs.writeFileSync((await Utils.getUri()).fsPath, JSON.stringify(updatedJson, null, 2) + '\n');
-    } catch (e) {
-      Utils.showErrorMessage(`Save json failed`);
-    }
   }
 
   public static setKey(key: string, json: {[key:string]: any}, value: string): any {
@@ -52,11 +22,11 @@ export class Utils {
       if (objectKey === keys[0]) {
         if (keys.length === 1) {
           if (typeof json[objectKey] === 'string' || (typeof json[objectKey] === 'object' && !!Object.keys(json[objectKey]).length)) {
-            Utils.showInfoMessage(`Existing i18n key overwritten with new value!`);
+            NotificationManager.showInfoMessage(`Existing i18n key overwritten with new value!`);
           }
           return json[objectKey] = value;
         } else {
-          return Utils.setKey(keys.slice(1).join('.'), json[objectKey], value);
+          return ExtensionUtils.setKey(keys.slice(1).join('.'), json[objectKey], value);
         }
       }
     }
@@ -67,7 +37,7 @@ export class Utils {
     const keys = Object.keys(json).sort((key1, key2) => key1.toLocaleLowerCase().localeCompare(key2.toLocaleLowerCase()));
     for(let key of keys){
       if(typeof json[key] === 'object'){
-        sortedObj[key] = Utils.sortJson(json[key]);
+        sortedObj[key] = ExtensionUtils.sortJson(json[key]);
       } else {
         sortedObj[key] = json[key];
       }
@@ -118,7 +88,7 @@ export class Utils {
   }
 
   public static renameParams(selection: string, paramNames: string[]): string {
-    const params = Utils.checkForParamsInSelection(selection)
+    const params = ExtensionUtils.checkForParamsInSelection(selection);
     params.forEach((param, id) => {
       if (paramNames[id]) {
         selection = selection.replace(param[0], ` {{ ${paramNames[id]} }} `);
@@ -144,15 +114,8 @@ export class Utils {
   }
 
   public static insertSnippet(key: string, languageId: string, range: vscode.Range, paramsMap: {[key:string]: string}) {
-    const snippet = Utils.prepareSnippet(key, languageId, paramsMap);
+    const snippet = ExtensionUtils.prepareSnippet(key, languageId, paramsMap);
     vscode.window.activeTextEditor?.insertSnippet(snippet, range);
   }
 
-  public static showInfoMessage(message: string): void {
-    vscode.window.showInformationMessage(message);
-  }
-
-  public static showErrorMessage(message: string): void {
-    vscode.window.showErrorMessage(message);
-  }
 }

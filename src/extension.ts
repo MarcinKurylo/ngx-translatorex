@@ -21,7 +21,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 
 	const completionProviders = [
 		CompletionProviders.registerCompletionProvider()
-	]
+	];
 
 	context.subscriptions.push(...commands, ...hoverProviders, ...completionProviders );
 };

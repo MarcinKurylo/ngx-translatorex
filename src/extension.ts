@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Commands } from './commands';
+import { CompletionProviders } from './completionProviders';
 import { HoverProviders } from './hoverProviders';
 import { ExtensionUtils } from './utils/extensionUtils';
 import { FileSystemManager } from './utils/fileSytemManager';
@@ -18,7 +19,11 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		HoverProviders.registerHtmlHoverProvider()
 	];
 
-	context.subscriptions.push(...commands, ...hoverProviders);
+	const completionProviders = [
+		CompletionProviders.registerCompletionProvider()
+	]
+
+	context.subscriptions.push(...commands, ...hoverProviders, ...completionProviders );
 };
 
 export const deactivate = () => {};

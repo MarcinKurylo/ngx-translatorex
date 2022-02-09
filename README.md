@@ -41,7 +41,7 @@ Scope mode creates a key basing on selected text and given scope. Example: scope
 
 ## Release Notes
 
-### 1.0.0
+### 0.0.1
 
 Preview release of ngx-translatorex
 

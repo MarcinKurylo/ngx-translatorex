@@ -73,7 +73,7 @@ export class ExtensionUtils {
     let snippet: vscode.SnippetString;
     switch(languageId) {
       case 'typescript':
-        snippet = new vscode.SnippetString(`'${key}'`);
+        snippet = new vscode.SnippetString(`${key}`);
         break;
       case 'html':
         let snippetText = `{{ '${key}' | translate }}`;
@@ -129,6 +129,17 @@ export class ExtensionUtils {
 
   public static insertSnippet(key: string, languageId: string, range: vscode.Range, paramsMap: {[key:string]: string}) {
     const snippet = ExtensionUtils.prepareSnippet(key, languageId, paramsMap);
+    if (languageId === 'typescript') {
+      const selection = vscode.window.activeTextEditor?.document.getText(range);
+      let snippetString = snippet.value;
+      if (selection?.startsWith(`'`) || selection?.startsWith(`"`)) {
+        snippetString = `'${snippetString}`;
+      }
+      if (selection?.endsWith(`'`) || selection?.endsWith(`"`)) {
+        snippetString = `${snippetString}'`;
+      }
+      snippet.value = snippetString;
+    }
     vscode.window.activeTextEditor?.insertSnippet(snippet, range);
   }
 

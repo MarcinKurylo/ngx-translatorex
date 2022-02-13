@@ -63,6 +63,9 @@ export class Commands {
           }
           const params = ExtensionUtils.checkForParamsInSelection(selection.text);
           selection.text = ExtensionUtils.renameParams(selection.text, paramNames);
+          if (selection.languageId === 'typescript') {
+            selection.text = selection.text.replace(/(^"|^'|"$|'$)/g, '');
+          }
           const paramsRenamed = ExtensionUtils.checkForParamsInSelection(selection.text);
           const paramsMap: {[key:string]: string} = {};
           paramsRenamed.forEach((param, id) => {

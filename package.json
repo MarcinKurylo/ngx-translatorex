@@ -2,7 +2,7 @@
   "name": "ngx-translatorex",
 	"displayName": "ngx-translatorex",
 	"description": "Translate manager for ngx translate Angular library",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"publisher": "marcinex",
 	"repository": {
 		"type": "git",
@@ -12,7 +12,7 @@
 		"vscode": "^1.64.0"
 	},
 	"categories": [
-		"Other"
+		"Snippets"
 	],
 	"activationEvents": [
 		"workspaceContains:angular.json",

@@ -45,6 +45,10 @@ Scope mode creates a key basing on selected text and given scope. Example: scope
 
 Preview release of ngx-translatorex
 
+### 0.0.2
+
+Fix quotation marks handling
+
 
 
 -----------------------------------------------------------------------------------------------------------

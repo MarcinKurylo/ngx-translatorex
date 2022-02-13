@@ -3,6 +3,11 @@
 	"displayName": "ngx-translatorex",
 	"description": "Translate manager for ngx translate Angular library",
 	"version": "0.0.1",
+	"publisher": "marcinex",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/MarcinKurylo/ngx-translatorex.git"
+	},
 	"engines": {
 		"vscode": "^1.64.0"
 	},

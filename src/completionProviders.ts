@@ -15,7 +15,7 @@ export class CompletionProviders {
       },
       resolveCompletionItem: (item) => {
         const resolveInsertText = () => {
-          let snippet = `{{ ${item.label.toString().slice(2)} | translate`;
+          let snippet = `{{ '${item.label.toString().slice(2)}' | translate`;
           const params = ExtensionUtils.checkForParamsInSelection(FileSystemManager.cache[item.label.toString().slice(2)]);
           if (!params.length) {
             return `${snippet} }}`;

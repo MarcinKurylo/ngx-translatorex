@@ -21,3 +21,9 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 - Add unit tests for the translation core and end-to-end integration tests that
   run against a real VS Code host
 - Refactor the translation logic into a pure, VS Code-independent module
+
+## [0.1.1]
+
+- Add an extension icon
+- Separate the Marketplace listing README from the GitHub developer README
+- Align the gallery banner colour with the icon

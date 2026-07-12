@@ -59,14 +59,17 @@ export class ExtensionUtils {
     return sortedObj;
   }
 
-  public static getSelection(): Selection {
-    const userSelection = vscode.window.activeTextEditor?.selection;
-    const selection: Selection = {
-      text: vscode.window.activeTextEditor?.document.getText(userSelection)!,
-      languageId: vscode.window.activeTextEditor?.document.languageId!,
-      range: new vscode.Range(userSelection!.start, userSelection!.end)
+  public static getSelection(): Selection | undefined {
+    const editor = vscode.window.activeTextEditor;
+    const userSelection = editor?.selection;
+    if (!editor || !userSelection || userSelection.isEmpty) {
+      return undefined;
+    }
+    return {
+      text: editor.document.getText(userSelection),
+      languageId: editor.document.languageId,
+      range: new vscode.Range(userSelection.start, userSelection.end)
     };
-    return selection;
   }
 
   public static prepareSnippet(key: string, languageId: string, paramsMap: {[key:string]: string}): vscode.SnippetString {

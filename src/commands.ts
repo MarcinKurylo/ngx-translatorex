@@ -27,8 +27,8 @@ export class Commands {
           NotificationManager.showErrorMessage("Provide path");
         } else {
           path = path.endsWith('/') ? path : `${path}/`;
-          ExtensionConfigManager.updateConfigValue('path', path.toLocaleLowerCase());
-          NotificationManager.showInfoMessage(`i18n path set to ${path.toLocaleLowerCase()}`);
+          ExtensionConfigManager.updateConfigValue('path', path);
+          NotificationManager.showInfoMessage(`i18n path set to ${path}`);
         }
       });
     });

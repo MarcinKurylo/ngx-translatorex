@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import { TextDecoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
 export class FileSystemManager {
@@ -13,10 +14,11 @@ export class FileSystemManager {
   public static async fetchJson(): Promise<any> {
     try {
       const uri = await FileSystemManager.getUri();
-      const file = (await vscode.workspace.fs.readFile(uri)).toLocaleString();
-      return file.length ? JSON.parse(file?.toLocaleString()) : {};
+      const file = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
+      return file.length ? JSON.parse(file) : {};
     } catch (e) {
       NotificationManager.showErrorMessage(`No file with ${ExtensionConfigManager.getConfigValue('language')} translations found`);
+      return {};
     }
   }
 

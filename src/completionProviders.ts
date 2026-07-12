@@ -21,9 +21,9 @@ export class CompletionProviders {
             return `${snippet} }}`;
           }
           snippet += ': { ' ;
-          params.forEach(param => {
-            snippet += `${param[0].replace('{{','').replace('}}','')}:'PLACEHOLDER'`;
-          });
+          snippet += params
+            .map(param => `${param[0].replace('{{', '').replace('}}', '').trim()}:'PLACEHOLDER'`)
+            .join(', ');
           snippet += ' } }}';
           return snippet;
         };

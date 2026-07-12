@@ -1,4 +1,4 @@
-import { ExtensionUtils } from './utils/extensionUtils';
+import { checkForParamsInSelection } from './utils/translationUtils';
 import { FileSystemManager } from './utils/fileSystemManager';
 import * as vscode from 'vscode';
 
@@ -24,7 +24,7 @@ export class CompletionProviders {
       resolveCompletionItem: (item) => {
         const resolveInsertText = () => {
           let snippet = `{{ '${item.label.toString().slice(2)}' | translate`;
-          const params = ExtensionUtils.checkForParamsInSelection(FileSystemManager.cache[item.label.toString().slice(2)]);
+          const params = checkForParamsInSelection(FileSystemManager.cache[item.label.toString().slice(2)]);
           if (!params.length) {
             return `${snippet} }}`;
           }

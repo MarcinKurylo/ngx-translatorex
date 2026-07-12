@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Commands } from './commands';
 import { CompletionProviders } from './completionProviders';
 import { HoverProviders } from './hoverProviders';
-import { ExtensionUtils } from './utils/extensionUtils';
+import { flattenObject } from './utils/translationUtils';
 import { FileSystemManager } from './utils/fileSystemManager';
 
 /**
@@ -13,7 +13,7 @@ import { FileSystemManager } from './utils/fileSystemManager';
  * @param context The extension context provided by VS Code.
  */
 export const activate = async (context: vscode.ExtensionContext) => {
-	FileSystemManager.cache = ExtensionUtils.flattenObject(await FileSystemManager.fetchJson());
+	FileSystemManager.cache = flattenObject(await FileSystemManager.fetchJson());
 	const commands = [
 		Commands.registerSetLanguage(),
 		Commands.registerSetPath(),

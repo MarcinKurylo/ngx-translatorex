@@ -12,12 +12,17 @@ export class ExtensionConfigManager {
   }
 
   /**
-   * Updates a setting in the extension's configuration section.
+   * Updates a setting in the extension's configuration section. Writes to the
+   * workspace when a folder is open, otherwise to the global (user) settings.
    *
    * @param key The setting to update.
    * @param newValue The new value to store.
+   * @returns A thenable that resolves once the setting has been written.
    */
-  public static updateConfigValue(key: string, newValue: string): void {
-    vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).update(key, newValue);
+  public static updateConfigValue(key: string, newValue: string): Thenable<void> {
+    const target = vscode.workspace.workspaceFolders?.length
+      ? vscode.ConfigurationTarget.Workspace
+      : vscode.ConfigurationTarget.Global;
+    return vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).update(key, newValue, target);
   }
 }

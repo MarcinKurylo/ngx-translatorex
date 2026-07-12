@@ -4,6 +4,17 @@ import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
 import { ExtensionUtils } from './utils/extensionUtils';
+import {
+  Mode,
+  checkForParamsInSelection,
+  generateKey,
+  isKeyValid,
+  renameParams,
+  setKey,
+  sortObject,
+  splitParamNames
+} from './utils/translationUtils';
+
 export class Commands {
 
   /**
@@ -14,10 +25,9 @@ export class Commands {
    */
   public static registerSetLanguage(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SET_LANGUAGE}`, () => {
-      vscode.window.showInputBox({title: 'Set language'}).then((lang) => {
-        const i18nTest = new RegExp(/^[a-zA-Z]{2}$/);
-        if (!lang || !i18nTest.test(lang)) {
-          NotificationManager.showErrorMessage("Provide proper i18n code");
+      vscode.window.showInputBox({ title: 'Set language' }).then((lang) => {
+        if (!lang || !/^[a-zA-Z]{2}$/.test(lang)) {
+          NotificationManager.showErrorMessage('Provide proper i18n code');
         } else {
           ExtensionConfigManager.updateConfigValue('language', lang.toLocaleLowerCase());
           NotificationManager.showInfoMessage(`Main language set to ${lang.toLocaleLowerCase()}`);
@@ -34,9 +44,9 @@ export class Commands {
    */
   public static registerSetPath(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SET_PATH}`, () => {
-      vscode.window.showInputBox({title: 'Set path to i18n folder', prompt: 'Can be absolute or pattern (e.g. **/assets/i18n)'}).then(path => {
+      vscode.window.showInputBox({ title: 'Set path to i18n folder', prompt: 'Can be absolute or pattern (e.g. **/assets/i18n)' }).then((path) => {
         if (!path) {
-          NotificationManager.showErrorMessage("Provide path");
+          NotificationManager.showErrorMessage('Provide path');
         } else {
           path = path.endsWith('/') ? path : `${path}/`;
           ExtensionConfigManager.updateConfigValue('path', path);
@@ -54,12 +64,12 @@ export class Commands {
    */
   public static registerSetMode(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SET_MODE}`, () => {
-      vscode.window.showQuickPick(['key', 'scope']).then(mode => {
+      vscode.window.showQuickPick(['key', 'scope']).then((mode) => {
         if (!mode) {
-          NotificationManager.showErrorMessage("Invalid mode!");
+          NotificationManager.showErrorMessage('Invalid mode!');
         } else {
           ExtensionConfigManager.updateConfigValue('mode', mode);
-        };
+        }
       });
     });
   }
@@ -75,41 +85,39 @@ export class Commands {
   public static registerAddNewTranslation(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.ADD_NEW_TRANSLATION}`, async () => {
       const selection = ExtensionUtils.getSelection();
-      if (selection) {
-        const mode = ExtensionConfigManager.getConfigValue('mode')!;
-        const title = mode  === 'key' ? 'Set key' : 'Set scope';
-        vscode.window.showInputBox({title, prompt: "Can be nested (e.g. 'key1.key2)"}).then(async key => {
-          if (!key || !ExtensionUtils.checkIfKeyValid(key)) {
-            return NotificationManager.showErrorMessage("Invalid key");
-          }
-          let paramNames: string[];
-          [key, paramNames] = ExtensionUtils.splitParamNames(key);
-          if (!ExtensionUtils.checkIfKeyValid(key)) {
-            return NotificationManager.showErrorMessage("Invalid key");
-          }
-          const params = ExtensionUtils.checkForParamsInSelection(selection.text);
-          selection.text = ExtensionUtils.renameParams(selection.text, paramNames);
-          if (selection.languageId === 'typescript') {
-            selection.text = selection.text.replace(/(^"|^'|"$|'$)/g, '');
-          }
-          const paramsRenamed = ExtensionUtils.checkForParamsInSelection(selection.text);
-          const paramsMap: {[key:string]: string} = {};
-          paramsRenamed.forEach((param, id) => {
-            paramsMap[param[0].replace("{{", "").replace("}}", '').trim()] = params[id][0].replace("{{", "").replace("}}", '').trim();
-          });
-          key = mode === 'key' ? key : ExtensionUtils.generateKey(key, selection.text);
-          const translationsJson = await FileSystemManager.fetchJson();
-          ExtensionUtils.setKey(key, translationsJson, selection.text);
-          const saved = await FileSystemManager.saveJson(translationsJson);
-          if (!saved) {
-            return;
-          }
-          FileSystemManager.cache[key] = selection.text;
-          ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
-        });
-      } else {
-        NotificationManager.showErrorMessage("No text selected");
+      if (!selection) {
+        return NotificationManager.showErrorMessage('No text selected');
       }
+
+      const mode = (ExtensionConfigManager.getConfigValue('mode') ?? 'key') as Mode;
+      const input = await vscode.window.showInputBox({
+        title: mode === 'key' ? 'Set key' : 'Set scope',
+        prompt: "Can be nested (e.g. 'key1.key2)"
+      });
+      const [rawKey, paramNames] = splitParamNames(input ?? '');
+      if (!input || !isKeyValid(input, mode) || !isKeyValid(rawKey, mode)) {
+        return NotificationManager.showErrorMessage('Invalid key');
+      }
+
+      const originalParams = checkForParamsInSelection(selection.text);
+      let value = renameParams(selection.text, paramNames);
+      if (selection.languageId === 'typescript') {
+        value = value.replace(/(^"|^'|"$|'$)/g, '');
+      }
+      const paramsMap = Commands.buildParamsMap(originalParams, checkForParamsInSelection(value));
+      const key = mode === 'key' ? rawKey : generateKey(rawKey, value);
+
+      const translations = await FileSystemManager.fetchJson();
+      const { overwritten } = setKey(translations, key, value);
+      const saved = await FileSystemManager.saveJson(translations);
+      if (!saved) {
+        return;
+      }
+      if (overwritten) {
+        NotificationManager.showInfoMessage('Existing i18n key overwritten with new value!');
+      }
+      FileSystemManager.cache[key] = value;
+      ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
     });
   }
 
@@ -121,9 +129,27 @@ export class Commands {
    */
   public static registerSortJson(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SORT_JSON}`, async () => {
-      const translationsJson = (await FileSystemManager.fetchJson());
-      const sortedJson = ExtensionUtils.sortObject(translationsJson);
-      await FileSystemManager.saveJson(sortedJson);
+      const translations = await FileSystemManager.fetchJson();
+      await FileSystemManager.saveJson(sortObject(translations));
     });
+  }
+
+  /**
+   * Maps each (renamed) selection placeholder to the original placeholder it
+   * replaced, by position, so the inserted snippet can bind params to their
+   * source expressions.
+   */
+  private static buildParamsMap(
+    originalParams: RegExpMatchArray[],
+    renamedParams: RegExpMatchArray[]
+  ): { [key: string]: string } {
+    const clean = (param: RegExpMatchArray) => param[0].replace('{{', '').replace('}}', '').trim();
+    const map: { [key: string]: string } = {};
+    renamedParams.forEach((param, id) => {
+      if (originalParams[id]) {
+        map[clean(param)] = clean(originalParams[id]);
+      }
+    });
+    return map;
   }
 }

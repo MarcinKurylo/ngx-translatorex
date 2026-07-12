@@ -175,4 +175,49 @@ describe('ngx-translatorex e2e', () => {
     await waitFor(async () => await suggestsExternalKey(), 8000);
     assert.ok(await suggestsExternalKey(), 'completion reflects the externally added key');
   });
+
+  it('flags only translate keys missing from the i18n file', async () => {
+    writeI18n({ home: { title: 'Home' } });
+    const doc = await vscode.workspace.openTextDocument({
+      content: `{{ 'home.title' | translate }} {{ 'missing.key' | translate }}`,
+      language: 'html'
+    });
+    await vscode.window.showTextDocument(doc);
+
+    const ourDiagnostics = () =>
+      vscode.languages.getDiagnostics(doc.uri).filter((d) => d.source === 'ngx-translatorex');
+
+    await waitFor(
+      () => ourDiagnostics().length === 1 && String(ourDiagnostics()[0].code) === 'missing.key',
+      8000
+    );
+    const diagnostics = ourDiagnostics();
+    assert.strictEqual(diagnostics.length, 1, 'the existing key is not flagged');
+    assert.strictEqual(String(diagnostics[0].code), 'missing.key');
+    assert.ok(diagnostics[0].message.includes('missing.key'), 'message names the key');
+  });
+
+  it('offers a "Create i18n key" quick fix for a missing key', async () => {
+    writeI18n({ home: { title: 'Home' } });
+    const doc = await vscode.workspace.openTextDocument({
+      content: `{{ 'needs.creating' | translate }}`,
+      language: 'html'
+    });
+    await vscode.window.showTextDocument(doc);
+
+    const ourDiagnostics = () =>
+      vscode.languages.getDiagnostics(doc.uri).filter((d) => d.source === 'ngx-translatorex');
+    await waitFor(() => ourDiagnostics().length === 1, 8000);
+
+    const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
+      'vscode.executeCodeActionProvider',
+      doc.uri,
+      ourDiagnostics()[0].range
+    );
+    const titles = actions.map((a) => a.title);
+    assert.ok(
+      titles.includes(`Create i18n key 'needs.creating'`),
+      `quick fix offered (got: ${titles.join(', ')})`
+    );
+  });
 });

@@ -12,6 +12,9 @@ export class FileSystemManager {
   /** Active watcher for the configured translation file, recreated on config changes. */
   private static watcher: vscode.FileSystemWatcher | undefined;
 
+  /** Optional listener invoked whenever the cache is rebuilt, so dependents (e.g. diagnostics) can refresh. */
+  public static onCacheChanged: (() => void) | undefined;
+
   /**
    * Resolves the URI of the main translation file for the configured language,
    * searching the workspace with the configured i18n path glob.
@@ -128,6 +131,7 @@ export class FileSystemManager {
    */
   public static async refreshCache(): Promise<void> {
     FileSystemManager.cache = flattenObject(await FileSystemManager.fetchJson());
+    FileSystemManager.onCacheChanged?.();
   }
 
   /**

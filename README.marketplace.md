@@ -10,6 +10,7 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 - **Interpolation params** — `{{ ... }}` placeholders in the selection are detected, can be renamed inline, and are wired into the generated `translate` pipe.
 - **Inline translation tooltips** — hover a key in your templates to see its translated value.
 - **IntelliSense completions** — get autocomplete for existing translation keys as you type.
+- **Missing-key diagnostics** — keys used with the `translate` pipe or `TranslateService` (`.instant`/`.get`/`.stream`) that don't exist in your i18n file are underlined as warnings, with a **Create i18n key** quick fix that adds them across all languages.
 - **Automatic refresh** — the extension watches your i18n file and reloads translations when it changes outside the editor (a manual edit, a `git pull`, or a branch switch), so tooltips and completions stay accurate.
 - **One-click JSON sort** — alphabetically sort your translation file, recursively.
 

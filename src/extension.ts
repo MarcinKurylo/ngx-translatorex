@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Commands } from './commands';
 import { CompletionProviders } from './completionProviders';
 import { HoverProviders } from './hoverProviders';
+import { DiagnosticsProvider } from './diagnosticsProvider';
 import { EXTENSION_IDENTIFIER } from './const';
 import { FileSystemManager } from './utils/fileSystemManager';
 
@@ -14,6 +15,8 @@ import { FileSystemManager } from './utils/fileSystemManager';
  * @param context The extension context provided by VS Code.
  */
 export const activate = async (context: vscode.ExtensionContext) => {
+	const diagnostics = DiagnosticsProvider.register();
+	FileSystemManager.onCacheChanged = () => DiagnosticsProvider.refreshAll();
 	await FileSystemManager.refreshCache();
 	FileSystemManager.watchTranslationFile();
 
@@ -29,7 +32,8 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		Commands.registerSetPath(),
 		Commands.registerAddNewTranslation(),
 		Commands.registerSortJson(),
-		Commands.registerSetMode()
+		Commands.registerSetMode(),
+		Commands.registerCreateTranslationKey()
 	];
 
 	const hoverProviders = [
@@ -44,6 +48,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		...commands,
 		...hoverProviders,
 		...completionProviders,
+		...diagnostics,
 		configListener,
 		{ dispose: () => FileSystemManager.disposeWatcher() }
 	);

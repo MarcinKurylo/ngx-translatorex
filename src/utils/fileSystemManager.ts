@@ -37,6 +37,22 @@ export class FileSystemManager {
   }
 
   /**
+   * Reads and parses every language file in the i18n folder, deriving each
+   * language code from the file name. Sorted by language for stable output.
+   *
+   * @returns One entry per language file, with its parsed translations tree.
+   */
+  public static async getAllLanguageTranslations(): Promise<{ language: string; tree: TranslationTree }[]> {
+    const uris = await FileSystemManager.getLanguageUris();
+    const languages = [];
+    for (const uri of uris) {
+      const language = uri.path.split('/').pop()!.replace(/\.json$/, '');
+      languages.push({ language, tree: await FileSystemManager.readJson(uri) });
+    }
+    return languages.sort((a, b) => a.language.localeCompare(b.language));
+  }
+
+  /**
    * Reads and parses the translation file at the given URI.
    *
    * @returns The parsed translations object, or `{}` when the file is empty.

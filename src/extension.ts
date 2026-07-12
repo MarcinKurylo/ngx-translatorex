@@ -33,7 +33,8 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		Commands.registerAddNewTranslation(),
 		Commands.registerSortJson(),
 		Commands.registerSetMode(),
-		Commands.registerCreateTranslationKey()
+		Commands.registerCreateTranslationKey(),
+		Commands.registerShowTranslationReport()
 	];
 
 	const hoverProviders = [

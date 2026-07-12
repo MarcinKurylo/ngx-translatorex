@@ -93,6 +93,42 @@ export function sortObject(tree: TranslationTree): TranslationTree {
   return sorted;
 }
 
+/** Per-language summary of keys that still need attention across the i18n folder. */
+export interface LanguageReport {
+  /** The language code (i18n file name without the `.json` extension). */
+  language: string;
+  /** Keys present in some other language but absent from this one. */
+  missing: string[];
+  /** Keys present in this language but still holding the placeholder value. */
+  untranslated: string[];
+}
+
+/**
+ * Compares every language's flattened keys against the union of all keys and
+ * reports, per language, which keys are missing entirely and which still hold
+ * the placeholder value (i.e. were synced but never translated). Keys are
+ * returned sorted for stable output.
+ */
+export function buildTranslationReport(
+  languages: { language: string; tree: TranslationTree }[],
+  placeholder: string
+): LanguageReport[] {
+  const flattened = languages.map((entry) => ({
+    language: entry.language,
+    keys: flattenObject(entry.tree)
+  }));
+  const allKeys = new Set<string>();
+  for (const entry of flattened) {
+    Object.keys(entry.keys).forEach((key) => allKeys.add(key));
+  }
+  const sortedKeys = [...allKeys].sort();
+  return flattened.map((entry) => ({
+    language: entry.language,
+    missing: sortedKeys.filter((key) => !(key in entry.keys)),
+    untranslated: sortedKeys.filter((key) => entry.keys[key] === placeholder)
+  }));
+}
+
 /**
  * Splits a user-provided key of the form `key:param1:param2` into the key and
  * the list of custom parameter names to apply to the selection's params.

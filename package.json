@@ -2,7 +2,7 @@
   "name": "ngx-translatorex",
 	"displayName": "ngx-translatorex",
 	"description": "Translate manager for ngx translate Angular library",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"publisher": "marcinex",
 	"license": "MIT",
 	"icon": "images/icon.png",
@@ -56,6 +56,10 @@
 			{
 				"command": "ngx-translatorex.sortJson",
 				"title": "ngx-translatorex: Sort Main i18n json file"
+			},
+			{
+				"command": "ngx-translatorex.showTranslationReport",
+				"title": "ngx-translatorex: Show translation report"
 			}
 		],
 		"keybindings": [

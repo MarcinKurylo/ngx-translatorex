@@ -220,4 +220,22 @@ describe('ngx-translatorex e2e', () => {
       `quick fix offered (got: ${titles.join(', ')})`
     );
   });
+
+  it('showTranslationReport lists missing and untranslated keys per language', async () => {
+    writeI18n({ home: { title: 'Home', welcome: 'Welcome' }, common: { save: 'Save' } });
+    writePl({ home: { title: 'Start', welcome: MISSING_TRANSLATION_PLACEHOLDER } });
+
+    await vscode.commands.executeCommand('ngx-translatorex.showTranslationReport');
+    await waitFor(
+      () => vscode.window.activeTextEditor?.document.languageId === 'markdown',
+      8000
+    );
+
+    const report = vscode.window.activeTextEditor!.document.getText();
+    assert.ok(report.includes('# Translation report'), 'renders a report heading');
+    assert.ok(report.includes('## pl'), 'has a section for pl');
+    assert.ok(report.includes('common.save'), 'lists the key missing from pl');
+    assert.ok(report.includes('home.welcome'), 'lists the untranslated placeholder key');
+    assert.ok(/##\s+en[\s\S]*Fully translated/.test(report), 'marks the main language as fully translated');
+  });
 });

@@ -100,9 +100,12 @@ export class Commands {
           key = mode === 'key' ? key : ExtensionUtils.generateKey(key, selection.text);
           const translationsJson = await FileSystemManager.fetchJson();
           ExtensionUtils.setKey(key, translationsJson, selection.text);
-          ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
+          const saved = await FileSystemManager.saveJson(translationsJson);
+          if (!saved) {
+            return;
+          }
           FileSystemManager.cache[key] = selection.text;
-          FileSystemManager.saveJson(translationsJson);
+          ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
         });
       } else {
         NotificationManager.showErrorMessage("No text selected");
@@ -120,7 +123,7 @@ export class Commands {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SORT_JSON}`, async () => {
       const translationsJson = (await FileSystemManager.fetchJson());
       const sortedJson = ExtensionUtils.sortObject(translationsJson);
-      FileSystemManager.saveJson(sortedJson);
+      await FileSystemManager.saveJson(sortedJson);
     });
   }
 }

@@ -65,7 +65,7 @@ export class ExtensionUtils {
   public static flattenObject(object: {[key: string]: any}, tail?: string): {[key: string]: string} {
     let flatObject: {[key: string]: string} = {};
     for (const key in object) {
-      if (typeof object[key] === 'object') {
+      if (object[key] !== null && typeof object[key] === 'object' && !Array.isArray(object[key])) {
         tail = tail ? `${tail}.${key}` : key;
         flatObject = {...flatObject, ...ExtensionUtils.flattenObject(object[key], tail)};
         tail = tail?.split('.').slice(0, -1).join('.');
@@ -143,8 +143,10 @@ export class ExtensionUtils {
         }
         snippet = new vscode.SnippetString(snippetText);
         break;
+      default:
+        throw new Error(`Unsupported languageId for snippet generation: ${languageId}`);
     }
-    return snippet!;
+    return snippet;
   }
 
   /**

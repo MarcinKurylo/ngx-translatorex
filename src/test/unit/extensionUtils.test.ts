@@ -15,6 +15,11 @@ describe('ExtensionUtils.flattenObject', () => {
   it('returns an empty object for empty input', () => {
     assert.deepStrictEqual(ExtensionUtils.flattenObject({}), {});
   });
+
+  it('treats null and array values as leaves instead of recursing', () => {
+    const flat = ExtensionUtils.flattenObject({ a: null, b: ['x', 'y'], c: { d: '1' } } as any);
+    assert.deepStrictEqual(flat, { a: null, b: ['x', 'y'], 'c.d': '1' } as any);
+  });
 });
 
 describe('ExtensionUtils.sortObject', () => {

@@ -11,6 +11,7 @@ Extension `ngx-translatorex` is a vscode extension designed to facilitate transl
 5. Support for translation params in .html.
 6. Params rename feature.
 7. Translations json sort.
+8. Automatic cache refresh when the i18n file changes outside the editor.
 
 ## Extension Settings
 
@@ -49,7 +50,15 @@ Preview release of ngx-translatorex
 
 Fix quotation marks handling
 
+### 0.1.0
 
+Automatic cache refresh on external i18n file changes, modernized tooling
+(TypeScript 5.9, ESLint 9, Node 20), unit and end-to-end tests, and a refactor
+of the translation core into a pure module. See the [CHANGELOG](CHANGELOG.md).
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 -----------------------------------------------------------------------------------------------------------
 

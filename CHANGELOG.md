@@ -10,3 +10,14 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 - Fix bug with missing quotation marks in HTML completion
 - Improve quotation marks handling in TS
+
+## [0.1.0]
+
+- Add automatic cache refresh: the extension now watches the configured i18n
+  file and reloads translations when it changes outside the editor (manual
+  edits, a git pull or branch switch) or when the language/path settings change
+- Modernize tooling: TypeScript 5.9, ESLint 9 flat config, Node 20, updated
+  dependencies with no remaining `npm audit` vulnerabilities, and a CI workflow
+- Add unit tests for the translation core and end-to-end integration tests that
+  run against a real VS Code host
+- Refactor the translation logic into a pure, VS Code-independent module

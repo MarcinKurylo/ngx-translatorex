@@ -12,10 +12,13 @@ const readI18n = (): any => JSON.parse(fs.readFileSync(i18nPath, 'utf8'));
 const writeI18n = (obj: unknown): void =>
   fs.writeFileSync(i18nPath, JSON.stringify(obj, null, 2) + '\n');
 
-const waitFor = async (predicate: () => boolean, timeout = 5000): Promise<void> => {
+const waitFor = async (
+  predicate: () => boolean | Promise<boolean>,
+  timeout = 5000
+): Promise<void> => {
   const start = Date.now();
   while (Date.now() - start < timeout) {
-    if (predicate()) {
+    if (await predicate()) {
       return;
     }
     await new Promise((r) => setTimeout(r, 50));
@@ -110,5 +113,25 @@ describe('ngx-translatorex e2e', () => {
     );
 
     assert.ok(labels.includes('t.home.title'), 'completion offers the cached key');
+  });
+
+  it('watcher refreshes the cache when the i18n file changes externally', async () => {
+    writeI18n({ external: { added: 'Added externally' } });
+
+    const suggestsExternalKey = async (): Promise<boolean> => {
+      const doc = await vscode.workspace.openTextDocument({ content: ' ', language: 'html' });
+      await vscode.window.showTextDocument(doc);
+      const list = await vscode.commands.executeCommand<vscode.CompletionList>(
+        'vscode.executeCompletionItemProvider',
+        doc.uri,
+        new vscode.Position(0, 1)
+      );
+      return list.items.some((i) =>
+        (typeof i.label === 'string' ? i.label : i.label.label) === 't.external.added'
+      );
+    };
+
+    await waitFor(async () => await suggestsExternalKey(), 8000);
+    assert.ok(await suggestsExternalKey(), 'completion reflects the externally added key');
   });
 });

@@ -5,6 +5,7 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 ## Features
 
 - **One-shortcut extraction** — select text in an `.html` or `.ts` file, press `Ctrl+T` / `Cmd+T`, and the string is moved to your i18n JSON under the key you type.
+- **Multi-language sync** — the new key is added to every language file in your i18n folder at once: the real value goes into your main language, and the others get a `[TODO] translation not implemented` placeholder so nothing is silently missing. Existing translations in other languages are never overwritten.
 - **Key and scope modes** — type the full key yourself, or let the extension generate one from the selected text under a scope you choose.
 - **Interpolation params** — `{{ ... }}` placeholders in the selection are detected, can be renamed inline, and are wired into the generated `translate` pipe.
 - **Inline translation tooltips** — hover a key in your templates to see its translated value.

@@ -61,6 +61,25 @@ describe('setKey', () => {
     const { overwritten } = setKey(tree, 'home.subtitle', 'Y');
     assert.strictEqual(overwritten, false);
   });
+
+  it('reports whether the tree was written', () => {
+    const tree: TranslationTree = {};
+    assert.strictEqual(setKey(tree, 'a.b', 'v').written, true);
+  });
+
+  it('leaves an existing value untouched when overwrite is false', () => {
+    const tree: TranslationTree = { home: { title: 'Start' } };
+    const result = setKey(tree, 'home.title', 'placeholder', { overwrite: false });
+    assert.strictEqual((tree.home as TranslationTree).title, 'Start');
+    assert.deepStrictEqual(result, { overwritten: false, written: false });
+  });
+
+  it('fills a missing key when overwrite is false', () => {
+    const tree: TranslationTree = { home: { title: 'Start' } };
+    const result = setKey(tree, 'home.subtitle', 'placeholder', { overwrite: false });
+    assert.strictEqual((tree.home as TranslationTree).subtitle, 'placeholder');
+    assert.strictEqual(result.written, true);
+  });
 });
 
 describe('generateKey', () => {

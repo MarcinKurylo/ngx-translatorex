@@ -5,12 +5,26 @@ import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
 export class FileSystemManager {
 
+  /** Flattened cache of the current language's translations, keyed by dotted key. */
   public static cache: {[key:string]: string};
 
+  /**
+   * Resolves the URI of the main translation file for the configured language,
+   * searching the workspace with the configured i18n path glob.
+   *
+   * @returns The URI of the first matching `<language>.json` file.
+   */
   public static async getUri(): Promise<vscode.Uri> {
     return (await vscode.workspace.findFiles(`${ExtensionConfigManager.getConfigValue('path')}${ExtensionConfigManager.getConfigValue('language')}.json`))[0];
   }
 
+  /**
+   * Reads and parses the main translation file for the configured language.
+   * Shows an error message and returns an empty object when the file is
+   * missing or cannot be parsed.
+   *
+   * @returns The parsed translations object, or `{}` on failure.
+   */
   public static async fetchJson(): Promise<any> {
     try {
       const uri = await FileSystemManager.getUri();
@@ -22,6 +36,12 @@ export class FileSystemManager {
     }
   }
 
+  /**
+   * Serializes the given object and writes it back to the main translation
+   * file (pretty-printed, two-space indent). Shows an error message on failure.
+   *
+   * @param updatedJson The translations object to persist.
+   */
   public static async saveJson(updatedJson: unknown): Promise<void> {
     try {
       fs.writeFileSync((await FileSystemManager.getUri()).fsPath, JSON.stringify(updatedJson, null, 2) + '\n');

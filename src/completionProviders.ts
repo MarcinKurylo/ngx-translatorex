@@ -4,6 +4,14 @@ import * as vscode from 'vscode';
 
 export class CompletionProviders {
 
+  /**
+   * Registers an HTML completion provider that suggests every cached
+   * translation key (prefixed with `t.`). On resolve, the selected item is
+   * expanded into a `{{ 'key' | translate }}` snippet, including a params
+   * object with placeholders when the translation contains interpolations.
+   *
+   * @returns The provider disposable, to be added to the extension subscriptions.
+   */
   public static registerCompletionProvider() {
     return vscode.languages.registerCompletionItemProvider('html', {
       provideCompletionItems: () => {

@@ -5,6 +5,13 @@ import { HoverProviders } from './hoverProviders';
 import { ExtensionUtils } from './utils/extensionUtils';
 import { FileSystemManager } from './utils/fileSytemManager';
 
+/**
+ * Extension entry point. Warms up the translations cache and registers all
+ * commands, hover and completion providers, wiring their disposables into the
+ * extension context subscriptions.
+ *
+ * @param context The extension context provided by VS Code.
+ */
 export const activate = async (context: vscode.ExtensionContext) => {
 	FileSystemManager.cache = ExtensionUtils.flattenObject(await FileSystemManager.fetchJson());
 	const commands = [
@@ -26,4 +33,5 @@ export const activate = async (context: vscode.ExtensionContext) => {
 	context.subscriptions.push(...commands, ...hoverProviders, ...completionProviders );
 };
 
+/** Extension teardown hook. No cleanup is required. */
 export const deactivate = () => {};

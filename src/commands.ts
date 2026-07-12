@@ -6,6 +6,12 @@ import { FileSystemManager } from './utils/fileSytemManager';
 import { ExtensionUtils } from './utils/extensionUtils';
 export class Commands {
 
+  /**
+   * Registers the command that prompts for the main i18n language code and
+   * stores it (validated as a two-letter code) in the extension settings.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
   public static registerSetLanguage(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SET_LANGUAGE}`, () => {
       vscode.window.showInputBox({title: 'Set language'}).then((lang) => {
@@ -20,6 +26,12 @@ export class Commands {
     });
   }
 
+  /**
+   * Registers the command that prompts for the i18n folder path (absolute or a
+   * glob pattern) and stores it in the extension settings, ensuring a trailing slash.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
   public static registerSetPath(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SET_PATH}`, () => {
       vscode.window.showInputBox({title: 'Set path to vscode i18n', prompt: 'Can be absolute or pattern (e.g. **/assets/i18n)'}).then(path => {
@@ -34,6 +46,12 @@ export class Commands {
     });
   }
 
+  /**
+   * Registers the command that lets the user pick the extension mode
+   * (`key` or `scope`) and stores it in the settings.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
   public static registerSetMode(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SET_MODE}`, () => {
       vscode.window.showQuickPick(['key', 'scope']).then(mode => {
@@ -46,6 +64,14 @@ export class Commands {
     });
   }
 
+  /**
+   * Registers the core command that turns the current selection into a
+   * translation entry: it prompts for a key (or scope), extracts and optionally
+   * renames interpolation params, writes the value to the i18n file, updates the
+   * cache and replaces the selection with the matching translate snippet.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
   public static registerAddNewTranslation(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.ADD_NEW_TRANSLATION}`, async () => {
       const selection = ExtensionUtils.getSelection();
@@ -84,6 +110,12 @@ export class Commands {
     });
   }
 
+  /**
+   * Registers the command that alphabetically sorts the main i18n JSON file
+   * (recursively) and writes it back.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
   public static registerSortJson(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SORT_JSON}`, async () => {
       const translationsJson = (await FileSystemManager.fetchJson());

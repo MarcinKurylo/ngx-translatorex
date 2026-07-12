@@ -2,6 +2,13 @@ import * as vscode from 'vscode';
 import { FileSystemManager } from './utils/fileSytemManager';
 export class HoverProviders {
 
+  /**
+   * Registers an HTML hover provider that, when hovering over a
+   * `{{ 'key' | translate }}` expression, shows the key together with its
+   * translation from the cache (or a notice when the key has no value).
+   *
+   * @returns The provider disposable, to be added to the extension subscriptions.
+   */
   public static registerHtmlHoverProvider() {
     return vscode.languages.registerHoverProvider('html', {
       provideHover(document, position, _token) {

@@ -84,18 +84,23 @@
 		"pretest": "npm run compile && npm run lint",
 		"lint": "eslint src",
 		"test:unit": "npm run compile && mocha --require ./test-setup/vscode-stub.js \"out/test/unit/**/*.test.js\"",
-		"test": "node ./out/test/runTest.js"
+		"test:e2e": "npm run compile && node ./out/test/runTest.js",
+		"test": "npm run test:unit && npm run test:e2e"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.85.0",
-		"@types/glob": "^8.1.0",
 		"@types/mocha": "^10.0.10",
 		"@types/node": "^20.19.43",
 		"@vscode/test-electron": "^2.5.2",
 		"eslint": "^9.39.5",
 		"typescript-eslint": "^8.63.0",
-		"glob": "^8.1.0",
 		"mocha": "^10.8.2",
 		"typescript": "^5.9.3"
+	},
+	"overrides": {
+		"braces": "^3.0.3",
+		"anymatch": { "picomatch": "^2.3.2" },
+		"readdirp": { "picomatch": "^2.3.2" },
+		"serialize-javascript": "^7.0.7"
 	}
 }

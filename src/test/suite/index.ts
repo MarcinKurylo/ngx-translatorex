@@ -1,38 +1,36 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import * as Mocha from 'mocha';
-import * as glob from 'glob';
 
+/**
+ * Discovers every compiled `*.test.js` file under this directory (the e2e
+ * suite) and runs them through Mocha inside the VS Code extension host.
+ */
 export function run(): Promise<void> {
-	// Create the mocha test
-	const mocha = new Mocha({
-		ui: 'tdd',
-		color: true
-	});
+  const mocha = new Mocha({ ui: 'bdd', color: true, timeout: 20000 });
+  const testsRoot = path.resolve(__dirname);
 
-	const testsRoot = path.resolve(__dirname, '..');
+  const findTestFiles = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        return findTestFiles(full);
+      }
+      return entry.name.endsWith('.test.js') ? [full] : [];
+    });
 
-	return new Promise((c, e) => {
-		glob('**/**.test.js', { cwd: testsRoot }, (err, files) => {
-			if (err) {
-				return e(err);
-			}
-
-			// Add files to the test suite
-			files.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
-
-			try {
-				// Run the mocha test
-				mocha.run(failures => {
-					if (failures > 0) {
-						e(new Error(`${failures} tests failed.`));
-					} else {
-						c();
-					}
-				});
-			} catch (err) {
-				console.error(err);
-				e(err);
-			}
-		});
-	});
+  return new Promise((resolve, reject) => {
+    try {
+      findTestFiles(testsRoot).forEach((file) => mocha.addFile(file));
+      mocha.run((failures) => {
+        if (failures > 0) {
+          reject(new Error(`${failures} tests failed.`));
+        } else {
+          resolve();
+        }
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
 }

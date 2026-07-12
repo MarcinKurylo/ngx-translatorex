@@ -1,0 +1,9 @@
+{
+  "home": {
+    "title": "Home",
+    "welcome": "Welcome {{ name }}"
+  },
+  "common": {
+    "save": "Save"
+  }
+}

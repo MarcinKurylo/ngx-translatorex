@@ -30,7 +30,7 @@ jobs:
       - name: Publish to VS Code Marketplace
         run: npx --yes @vscode/vsce publish --packagePath ngx-translatorex-${{ github.ref_name }}.vsix
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          VSCE_PAT: ${{ secrets.VSCE_PATH }}
 
       - name: Create GitHub Release with the packaged VSIX
         uses: softprops/action-gh-release@v2

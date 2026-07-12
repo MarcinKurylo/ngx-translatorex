@@ -56,6 +56,19 @@ Automatic cache refresh on external i18n file changes, modernized tooling
 (TypeScript 5.9, ESLint 9, Node 20), unit and end-to-end tests, and a refactor
 of the translation core into a pure module. See the [CHANGELOG](CHANGELOG.md).
 
+## Releasing
+
+Releases are automated via GitHub Actions. To publish a new version:
+
+1. Bump `version` in `package.json` and add a `CHANGELOG.md` entry.
+2. Commit to `main`, then tag the matching version and push it:
+   `git tag v0.1.0 && git push origin v0.1.0`.
+
+The `Release` workflow then runs the tests, packages the extension and
+publishes it to the VS Code Marketplace (using the `VSCE_PAT` repository
+secret), and attaches the `.vsix` to a GitHub Release. The tag name should
+match the `package.json` version, which is the version actually published.
+
 ## License
 
 Released under the [MIT License](LICENSE).

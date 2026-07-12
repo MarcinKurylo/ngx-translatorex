@@ -8,13 +8,10 @@
   <rect width="128" height="128" rx="28" fill="url(#gB)"/>
   <g fill="none" stroke="#ffffff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
     <!-- left brace -->
-    <path d="M45 34 C34 34 35 47 35 55 C35 61 28 64 28 64 C28 64 35 67 35 73 C35 81 34 94 45 94"/>
+    <path d="M44 34 C33 34 34 47 34 55 C34 61 27 64 27 64 C27 64 34 67 34 73 C34 81 33 94 44 94"/>
     <!-- right brace -->
-    <path d="M83 34 C94 34 93 47 93 55 C93 61 100 64 100 64 C100 64 93 67 93 73 C93 81 94 94 83 94"/>
+    <path d="M84 34 C95 34 94 47 94 55 C94 61 101 64 101 64 C101 64 94 67 94 73 C94 81 95 94 84 94"/>
   </g>
-  <!-- geometric lowercase t (font-independent) -->
-  <g fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M64 40 V74 C64 82 68 85 75 84"/>
-    <path d="M52 54 H76"/>
-  </g>
+  <!-- serif t (translate) -->
+  <text x="64" y="82" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="#ffffff">t</text>
 </svg>

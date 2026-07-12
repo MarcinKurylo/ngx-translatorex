@@ -82,6 +82,7 @@
 		"watch": "tsc -watch -p ./",
 		"pretest": "npm run compile && npm run lint",
 		"lint": "eslint src --ext ts",
+		"test:unit": "npm run compile && mocha --require ./test-setup/vscode-stub.js \"out/test/unit/**/*.test.js\"",
 		"test": "node ./out/test/runTest.js"
 	},
 	"devDependencies": {

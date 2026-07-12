@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FileSystemManager } from './utils/fileSytemManager';
+import { FileSystemManager } from './utils/fileSystemManager';
 export class HoverProviders {
 
   /**

@@ -19,6 +19,7 @@ describe('ExtensionUtils.flattenObject', () => {
 
 describe('ExtensionUtils.sortObject', () => {
   it('sorts keys alphabetically, case-insensitively', () => {
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- capitalized i18n keys are valid test data
     const sorted = ExtensionUtils.sortObject({ Beta: '1', alpha: '2', Charlie: '3' });
     assert.deepStrictEqual(Object.keys(sorted), ['alpha', 'Beta', 'Charlie']);
   });

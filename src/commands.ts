@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ExtensionCommands, EXTENSION_IDENTIFIER } from './const';
 import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
-import { FileSystemManager } from './utils/fileSytemManager';
+import { FileSystemManager } from './utils/fileSystemManager';
 import { ExtensionUtils } from './utils/extensionUtils';
 export class Commands {
 
@@ -34,7 +34,7 @@ export class Commands {
    */
   public static registerSetPath(): vscode.Disposable {
     return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SET_PATH}`, () => {
-      vscode.window.showInputBox({title: 'Set path to vscode i18n', prompt: 'Can be absolute or pattern (e.g. **/assets/i18n)'}).then(path => {
+      vscode.window.showInputBox({title: 'Set path to i18n folder', prompt: 'Can be absolute or pattern (e.g. **/assets/i18n)'}).then(path => {
         if (!path) {
           NotificationManager.showErrorMessage("Provide path");
         } else {

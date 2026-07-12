@@ -1,5 +1,5 @@
-import { ExtensionUtils } from "./utils/extensionUtils";
-import { FileSystemManager } from "./utils/fileSytemManager";
+import { ExtensionUtils } from './utils/extensionUtils';
+import { FileSystemManager } from './utils/fileSystemManager';
 import * as vscode from 'vscode';
 
 export class CompletionProviders {

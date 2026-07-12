@@ -24,6 +24,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Interpolation param detection, inline rename and binding into the `translate` pipe.
 - Hover tooltips showing a key's translated value.
 - IntelliSense completions for existing keys.
+- Missing-key diagnostics for `translate` pipe / `TranslateService` usages, with a "Create i18n key" quick fix.
 - Automatic cache refresh via a file watcher when the i18n file changes outside the editor.
 - One-click recursive JSON sort.
 
@@ -36,8 +37,11 @@ settings and commands.
   (validation, nesting, flatten, sort, key generation). Unit-tested directly.
 - `src/utils/*` — editor-facing helpers (selection, snippets, config, file I/O,
   the i18n file watcher, notifications).
-- `src/commands.ts`, `src/hoverProviders.ts`, `src/completionProviders.ts` —
-  the contributed commands and providers.
+- `src/commands.ts`, `src/hoverProviders.ts`, `src/completionProviders.ts`,
+  `src/diagnosticsProvider.ts` — the contributed commands and providers
+  (including missing-key diagnostics and their quick fix).
+- `src/utils/diagnosticsUtils.ts` — pure, `vscode`-free detection of
+  translate-key references in HTML/TS. Unit-tested directly.
 - `src/extension.ts` — activation: warms the cache, starts the watcher, wires up
   disposables.
 

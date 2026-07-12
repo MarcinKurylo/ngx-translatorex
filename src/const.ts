@@ -13,5 +13,6 @@ export enum ExtensionCommands  {
   SET_PATH = 'setPath',
   SET_MODE = 'setMode',
   ADD_NEW_TRANSLATION = 'addNewTranslation',
-  SORT_JSON = 'sortJson'
+  SORT_JSON = 'sortJson',
+  CREATE_TRANSLATION_KEY = 'createTranslationKey'
 }

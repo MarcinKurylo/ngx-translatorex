@@ -34,3 +34,7 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
   gets the entered value, while every other language gets a
   `[TODO] translation not implemented` placeholder. Existing translations in
   other languages are never overwritten.
+- Report missing i18n keys as diagnostics: keys used with the `translate` pipe
+  (HTML) or `TranslateService` `.instant`/`.get`/`.stream` calls (TypeScript)
+  that are absent from the i18n file are underlined as warnings, with a
+  "Create i18n key" quick fix that adds them across all languages.

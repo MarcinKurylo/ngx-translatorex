@@ -114,7 +114,37 @@ export class Commands {
         NotificationManager.showInfoMessage('Existing i18n key overwritten with new value!');
       }
       FileSystemManager.cache[key] = value;
+      FileSystemManager.onCacheChanged?.();
       ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
+    });
+  }
+
+  /**
+   * Registers the command backing the "Create i18n key" diagnostic quick fix:
+   * it prompts for the main-language value and writes the key across all
+   * language files, then updates the cache so the missing-key warning clears.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerCreateTranslationKey(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.CREATE_TRANSLATION_KEY}`, async (key?: string) => {
+      if (!key) {
+        return;
+      }
+      const value = await vscode.window.showInputBox({
+        title: `Create i18n key '${key}'`,
+        prompt: 'Value for the main language'
+      });
+      if (value === undefined) {
+        return;
+      }
+      const { saved } = await FileSystemManager.addTranslation(key, value);
+      if (!saved) {
+        return;
+      }
+      FileSystemManager.cache[key] = value;
+      FileSystemManager.onCacheChanged?.();
+      NotificationManager.showInfoMessage(`i18n key '${key}' created`);
     });
   }
 

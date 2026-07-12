@@ -10,7 +10,6 @@ import {
   generateKey,
   isKeyValid,
   renameParams,
-  setKey,
   sortObject,
   splitParamNames
 } from './utils/translationUtils';
@@ -107,9 +106,7 @@ export class Commands {
       const paramsMap = Commands.buildParamsMap(originalParams, checkForParamsInSelection(value));
       const key = mode === 'key' ? rawKey : generateKey(rawKey, value);
 
-      const translations = await FileSystemManager.fetchJson();
-      const { overwritten } = setKey(translations, key, value);
-      const saved = await FileSystemManager.saveJson(translations);
+      const { saved, overwritten } = await FileSystemManager.addTranslation(key, value);
       if (!saved) {
         return;
       }

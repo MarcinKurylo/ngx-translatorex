@@ -2,15 +2,21 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { MISSING_TRANSLATION_PLACEHOLDER } from '../../const';
 
-const i18nPath = path.resolve(
+const i18nDir = path.resolve(
   __dirname,
-  '../../../src/test/fixtures/workspace/src/assets/i18n/en.json'
+  '../../../src/test/fixtures/workspace/src/assets/i18n'
 );
+const i18nPath = path.join(i18nDir, 'en.json');
+const plPath = path.join(i18nDir, 'pl.json');
 
 const readI18n = (): any => JSON.parse(fs.readFileSync(i18nPath, 'utf8'));
 const writeI18n = (obj: unknown): void =>
   fs.writeFileSync(i18nPath, JSON.stringify(obj, null, 2) + '\n');
+const readPl = (): any => JSON.parse(fs.readFileSync(plPath, 'utf8'));
+const writePl = (obj: unknown): void =>
+  fs.writeFileSync(plPath, JSON.stringify(obj, null, 2) + '\n');
 
 const waitFor = async (
   predicate: () => boolean | Promise<boolean>,
@@ -28,9 +34,11 @@ const waitFor = async (
 
 describe('ngx-translatorex e2e', () => {
   let original: string;
+  let originalPl: string;
 
   before(async () => {
     original = fs.readFileSync(i18nPath, 'utf8');
+    originalPl = fs.readFileSync(plPath, 'utf8');
     const ext = vscode.extensions.getExtension('marcinex.ngx-translatorex');
     assert.ok(ext, 'extension should be present');
     await ext!.activate();
@@ -38,6 +46,7 @@ describe('ngx-translatorex e2e', () => {
 
   after(() => {
     fs.writeFileSync(i18nPath, original);
+    fs.writeFileSync(plPath, originalPl);
   });
 
   it('sortJson sorts the i18n file alphabetically', async () => {
@@ -72,6 +81,38 @@ describe('ngx-translatorex e2e', () => {
     assert.strictEqual(readI18n().greeting.hello, 'Hello world');
     await waitFor(() => doc.getText().includes('greeting.hello'));
     assert.ok(doc.getText().includes('greeting.hello'), 'editor selection replaced with the key');
+  });
+
+  it('addNewTranslation syncs the key to other languages with a placeholder', async () => {
+    writeI18n({ home: { title: 'Home' } });
+    writePl({ home: { title: 'Start' } });
+
+    const doc = await vscode.workspace.openTextDocument({
+      content: 'Hello world',
+      language: 'typescript'
+    });
+    const editor = await vscode.window.showTextDocument(doc);
+    editor.selection = new vscode.Selection(
+      new vscode.Position(0, 0),
+      new vscode.Position(0, 'Hello world'.length)
+    );
+
+    const originalInputBox = vscode.window.showInputBox;
+    (vscode.window as any).showInputBox = async () => 'greeting.hello';
+    try {
+      await vscode.commands.executeCommand('ngx-translatorex.addNewTranslation');
+      await waitFor(() => readPl().greeting?.hello === MISSING_TRANSLATION_PLACEHOLDER);
+    } finally {
+      (vscode.window as any).showInputBox = originalInputBox;
+    }
+
+    assert.strictEqual(readI18n().greeting.hello, 'Hello world', 'main language gets the real value');
+    assert.strictEqual(
+      readPl().greeting.hello,
+      MISSING_TRANSLATION_PLACEHOLDER,
+      'other language gets the placeholder'
+    );
+    assert.strictEqual(readPl().home.title, 'Start', 'existing key in other language is left untouched');
   });
 
   it('hover provider shows the translation for a key', async () => {

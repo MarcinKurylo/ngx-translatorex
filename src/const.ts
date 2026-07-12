@@ -1,5 +1,12 @@
 export const EXTENSION_IDENTIFIER = 'ngx-translatorex';
 export type ConfigValue = 'language' | 'mode' | 'path';
+
+/**
+ * Placeholder written for a new key into every language file other than the
+ * main one, so the key exists everywhere and untranslated languages are easy
+ * to spot.
+ */
+export const MISSING_TRANSLATION_PLACEHOLDER = '[TODO] translation not implemented';
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum ExtensionCommands  {
   SET_LANGUAGE = 'setLanguage',

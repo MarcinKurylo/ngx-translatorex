@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
-import { TranslationTree, flattenObject } from './translationUtils';
+import { MISSING_TRANSLATION_PLACEHOLDER } from '../const';
+import { TranslationTree, flattenObject, setKey } from './translationUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
@@ -22,6 +23,37 @@ export class FileSystemManager {
   }
 
   /**
+   * Resolves the URIs of every language file in the configured i18n folder
+   * (every `*.json` under the configured path), so a new key can be synced
+   * across all languages.
+   *
+   * @returns The URIs of all translation files in the i18n folder.
+   */
+  public static async getLanguageUris(): Promise<vscode.Uri[]> {
+    return [...await vscode.workspace.findFiles(`${ExtensionConfigManager.getConfigValue('path')}*.json`)];
+  }
+
+  /**
+   * Reads and parses the translation file at the given URI.
+   *
+   * @returns The parsed translations object, or `{}` when the file is empty.
+   */
+  private static async readJson(uri: vscode.Uri): Promise<TranslationTree> {
+    const file = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
+    return file.length ? JSON.parse(file) : {};
+  }
+
+  /**
+   * Serializes and writes a translations object to the given URI
+   * (pretty-printed, two-space indent) via the VS Code file system API, so it
+   * also works in remote and virtual workspaces.
+   */
+  private static async writeJson(uri: vscode.Uri, tree: TranslationTree): Promise<void> {
+    const content = new TextEncoder().encode(JSON.stringify(tree, null, 2) + '\n');
+    await vscode.workspace.fs.writeFile(uri, content);
+  }
+
+  /**
    * Reads and parses the main translation file for the configured language.
    * Shows an error message and returns an empty object when the file is
    * missing or cannot be parsed.
@@ -30,9 +62,7 @@ export class FileSystemManager {
    */
   public static async fetchJson(): Promise<TranslationTree> {
     try {
-      const uri = await FileSystemManager.getUri();
-      const file = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
-      return file.length ? JSON.parse(file) : {};
+      return await FileSystemManager.readJson(await FileSystemManager.getUri());
     } catch (e) {
       NotificationManager.showErrorMessage(`No file with ${ExtensionConfigManager.getConfigValue('language')} translations found`);
       return {};
@@ -41,22 +71,54 @@ export class FileSystemManager {
 
   /**
    * Serializes the given object and writes it back to the main translation
-   * file (pretty-printed, two-space indent) via the VS Code file system API,
-   * so it also works in remote and virtual workspaces. Shows an error message
-   * on failure.
+   * file. Shows an error message on failure.
    *
    * @param updatedJson The translations object to persist.
    * @returns `true` when the file was written, `false` on failure.
    */
   public static async saveJson(updatedJson: TranslationTree): Promise<boolean> {
     try {
-      const uri = await FileSystemManager.getUri();
-      const content = new TextEncoder().encode(JSON.stringify(updatedJson, null, 2) + '\n');
-      await vscode.workspace.fs.writeFile(uri, content);
+      await FileSystemManager.writeJson(await FileSystemManager.getUri(), updatedJson);
       return true;
     } catch (e) {
       NotificationManager.showErrorMessage(`Save json failed`);
       return false;
+    }
+  }
+
+  /**
+   * Writes a new key into every language file in the i18n folder: the real
+   * value goes into the main language file, while all other languages receive a
+   * placeholder so the key exists everywhere and untranslated languages stay
+   * visible. Existing values in secondary languages are never overwritten.
+   *
+   * @param key The dotted translation key to add.
+   * @param value The value for the main language.
+   * @returns `saved` — whether the write succeeded; `overwritten` — whether an
+   * existing value in the main file was replaced.
+   */
+  public static async addTranslation(key: string, value: string): Promise<{ saved: boolean; overwritten: boolean }> {
+    try {
+      const mainUri = await FileSystemManager.getUri();
+      const uris = await FileSystemManager.getLanguageUris();
+      let overwritten = false;
+      for (const uri of uris) {
+        const isMain = uri.toString() === mainUri.toString();
+        const tree = await FileSystemManager.readJson(uri);
+        const result = isMain
+          ? setKey(tree, key, value)
+          : setKey(tree, key, MISSING_TRANSLATION_PLACEHOLDER, { overwrite: false });
+        if (isMain) {
+          overwritten = result.overwritten;
+        }
+        if (result.written) {
+          await FileSystemManager.writeJson(uri, tree);
+        }
+      }
+      return { saved: true, overwritten };
+    } catch (e) {
+      NotificationManager.showErrorMessage(`Save json failed`);
+      return { saved: false, overwritten: false };
     }
   }
 

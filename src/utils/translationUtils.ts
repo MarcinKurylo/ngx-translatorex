@@ -27,21 +27,35 @@ export function isKeyValid(key: string, mode: Mode): boolean {
  * Inserts a value into a nested tree under a dotted key, creating any missing
  * intermediate subtrees. Mutates `tree` in place.
  *
- * @returns Whether an existing string/non-empty-subtree value was overwritten.
+ * When `options.overwrite` is `false`, an existing value at the key is left
+ * untouched (used for secondary language files, so real translations are never
+ * replaced with a placeholder).
+ *
+ * @returns `overwritten` — whether an existing value was replaced; `written` —
+ * whether the tree was actually modified.
  */
-export function setKey(tree: TranslationTree, key: string, value: string): { overwritten: boolean } {
+export function setKey(
+  tree: TranslationTree,
+  key: string,
+  value: string,
+  options: { overwrite?: boolean } = {}
+): { overwritten: boolean; written: boolean } {
+  const overwrite = options.overwrite ?? true;
   const [head, ...rest] = key.split('.');
   if (rest.length === 0) {
     const existing = tree[head];
     const overwritten =
       typeof existing === 'string' || (isSubtree(existing) && Object.keys(existing).length > 0);
+    if (!overwrite && existing !== undefined) {
+      return { overwritten: false, written: false };
+    }
     tree[head] = value;
-    return { overwritten };
+    return { overwritten, written: true };
   }
   const child = tree[head];
   const subtree: TranslationTree = isSubtree(child) ? child : {};
   tree[head] = subtree;
-  return setKey(subtree, rest.join('.'), value);
+  return setKey(subtree, rest.join('.'), value, options);
 }
 
 /**

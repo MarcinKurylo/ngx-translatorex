@@ -27,3 +27,10 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 - Add an extension icon
 - Separate the Marketplace listing README from the GitHub developer README
 - Align the gallery banner colour with the icon
+
+## [0.2.0]
+
+- Sync new keys across all language files in the i18n folder: the main language
+  gets the entered value, while every other language gets a
+  `[TODO] translation not implemented` placeholder. Existing translations in
+  other languages are never overwritten.

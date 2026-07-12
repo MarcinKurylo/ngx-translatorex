@@ -19,6 +19,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 ## Features
 
 - One-shortcut extraction of strings from `.html` and `.ts` into i18n keys.
+- Multi-language sync: the key is written to every language file in the i18n folder — the real value into the main language, a placeholder into the rest (existing values are never overwritten).
 - `key` and `scope` modes (type the key, or auto-generate it from the selection).
 - Interpolation param detection, inline rename and binding into the `translate` pipe.
 - Hover tooltips showing a key's translated value.

@@ -1,8 +1,8 @@
 # ngx-translatorex
 
 [![CI](https://github.com/MarcinKurylo/ngx-translatorex/actions/workflows/ci.yml/badge.svg)](https://github.com/MarcinKurylo/ngx-translatorex/actions/workflows/ci.yml)
-[![Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/marcinex.ngx-translatorex?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=marcinex.ngx-translatorex)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/marcinex.ngx-translatorex)](https://marketplace.visualstudio.com/items?itemName=marcinex.ngx-translatorex)
+[![Marketplace Version](https://vsmarketplacebadges.dev/version-short/marcinex.ngx-translatorex.svg?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=marcinex.ngx-translatorex)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/marcinex.ngx-translatorex.svg)](https://marketplace.visualstudio.com/items?itemName=marcinex.ngx-translatorex)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A VS Code extension that extracts hard-coded strings from Angular templates and

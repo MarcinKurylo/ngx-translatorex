@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
+import { TranslationTree } from './translationUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
@@ -24,7 +25,7 @@ export class FileSystemManager {
    *
    * @returns The parsed translations object, or `{}` on failure.
    */
-  public static async fetchJson(): Promise<any> {
+  public static async fetchJson(): Promise<TranslationTree> {
     try {
       const uri = await FileSystemManager.getUri();
       const file = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
@@ -44,7 +45,7 @@ export class FileSystemManager {
    * @param updatedJson The translations object to persist.
    * @returns `true` when the file was written, `false` on failure.
    */
-  public static async saveJson(updatedJson: unknown): Promise<boolean> {
+  public static async saveJson(updatedJson: TranslationTree): Promise<boolean> {
     try {
       const uri = await FileSystemManager.getUri();
       const content = new TextEncoder().encode(JSON.stringify(updatedJson, null, 2) + '\n');

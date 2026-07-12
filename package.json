@@ -83,8 +83,9 @@
 		"watch": "tsc -watch -p ./",
 		"pretest": "npm run compile && npm run lint",
 		"lint": "eslint src",
-		"test:unit": "npm run compile && mocha --require ./test-setup/vscode-stub.js \"out/test/unit/**/*.test.js\"",
-		"test:e2e": "npm run compile && node ./out/test/runTest.js",
+		"clean": "rm -rf out",
+		"test:unit": "npm run clean && npm run compile && mocha \"out/test/unit/**/*.test.js\"",
+		"test:e2e": "npm run clean && npm run compile && node ./out/test/runTest.js",
 		"test": "npm run test:unit && npm run test:e2e"
 	},
 	"devDependencies": {

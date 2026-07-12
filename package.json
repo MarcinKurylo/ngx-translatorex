@@ -99,7 +99,9 @@
 		"clean": "rm -rf out",
 		"test:unit": "npm run clean && npm run compile && mocha \"out/test/unit/**/*.test.js\"",
 		"test:e2e": "npm run clean && npm run compile && node ./out/test/runTest.js",
-		"test": "npm run test:unit && npm run test:e2e"
+		"test": "npm run test:unit && npm run test:e2e",
+		"package": "npx --yes @vscode/vsce package --readme-path README.marketplace.md",
+		"publish": "npx --yes @vscode/vsce publish --readme-path README.marketplace.md"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.85.0",

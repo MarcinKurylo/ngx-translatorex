@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run compile
+      - run: npm run lint
+      - run: npm run test:unit
+      # e2e drives a real VS Code instance, which needs a display on Linux.
+      - run: xvfb-run -a npm run test:e2e
+
+      - name: Package extension
+        run: npx --yes @vscode/vsce package --out ngx-translatorex-${{ github.ref_name }}.vsix
+
+      - name: Publish to VS Code Marketplace
+        run: npx --yes @vscode/vsce publish --packagePath ngx-translatorex-${{ github.ref_name }}.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Create GitHub Release with the packaged VSIX
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ngx-translatorex-*.vsix
+          generate_release_notes: true

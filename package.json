@@ -14,8 +14,20 @@
 		"node": ">=20"
 	},
 	"categories": [
-		"Snippets"
+		"Snippets",
+		"Other"
 	],
+	"keywords": [
+		"angular",
+		"ngx-translate",
+		"i18n",
+		"translation",
+		"localization"
+	],
+	"galleryBanner": {
+		"color": "#1976D2",
+		"theme": "dark"
+	},
 	"activationEvents": [
 		"workspaceContains:angular.json",
 		"workspaceContains:.angular-cli.json"

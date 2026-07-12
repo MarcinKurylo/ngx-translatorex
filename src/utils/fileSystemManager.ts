@@ -2,11 +2,14 @@ import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
-import { TranslationTree } from './translationUtils';
+import { TranslationTree, flattenObject } from './translationUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
   public static cache: {[key:string]: string};
+
+  /** Active watcher for the configured translation file, recreated on config changes. */
+  private static watcher: vscode.FileSystemWatcher | undefined;
 
   /**
    * Resolves the URI of the main translation file for the configured language,
@@ -55,5 +58,36 @@ export class FileSystemManager {
       NotificationManager.showErrorMessage(`Save json failed`);
       return false;
     }
+  }
+
+  /**
+   * Re-reads the main translation file and rebuilds the flattened cache. Used to
+   * keep the cache in sync after the file changes outside the extension.
+   */
+  public static async refreshCache(): Promise<void> {
+    FileSystemManager.cache = flattenObject(await FileSystemManager.fetchJson());
+  }
+
+  /**
+   * (Re)creates a file system watcher for the configured translation file so the
+   * cache is refreshed whenever the file is created, changed or deleted outside
+   * the extension (e.g. manual edits, a git pull or branch switch). Any previous
+   * watcher is disposed first, so this can be called again after config changes.
+   */
+  public static watchTranslationFile(): void {
+    FileSystemManager.watcher?.dispose();
+    const pattern = `${ExtensionConfigManager.getConfigValue('path')}${ExtensionConfigManager.getConfigValue('language')}.json`;
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    const refresh = () => FileSystemManager.refreshCache();
+    watcher.onDidChange(refresh);
+    watcher.onDidCreate(refresh);
+    watcher.onDidDelete(refresh);
+    FileSystemManager.watcher = watcher;
+  }
+
+  /** Disposes the active translation file watcher, if any. */
+  public static disposeWatcher(): void {
+    FileSystemManager.watcher?.dispose();
+    FileSystemManager.watcher = undefined;
   }
 }

@@ -2,8 +2,9 @@
   "name": "ngx-translatorex",
 	"displayName": "ngx-translatorex",
 	"description": "Translate manager for ngx translate Angular library",
-	"version": "0.0.2",
+	"version": "0.1.0",
 	"publisher": "marcinex",
+	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/MarcinKurylo/ngx-translatorex.git"

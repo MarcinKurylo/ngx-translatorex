@@ -38,3 +38,5 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
   (HTML) or `TranslateService` `.instant`/`.get`/`.stream` calls (TypeScript)
   that are absent from the i18n file are underlined as warnings, with a
   "Create i18n key" quick fix that adds them across all languages.
+- Add a **Show translation report** command that lists, per language, the keys
+  that are missing or still hold the `[TODO]` placeholder across the i18n folder.

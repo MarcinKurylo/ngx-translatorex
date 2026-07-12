@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import {
   TranslationTree,
+  buildTranslationReport,
   checkForParamsInSelection,
   flattenObject,
   generateKey,
@@ -10,6 +11,8 @@ import {
   sortObject,
   splitParamNames
 } from '../../utils/translationUtils';
+
+const PLACEHOLDER = '[TODO] translation not implemented';
 
 describe('flattenObject', () => {
   it('flattens a nested tree into dot-separated keys', () => {
@@ -79,6 +82,50 @@ describe('setKey', () => {
     const result = setKey(tree, 'home.subtitle', 'placeholder', { overwrite: false });
     assert.strictEqual((tree.home as TranslationTree).subtitle, 'placeholder');
     assert.strictEqual(result.written, true);
+  });
+});
+
+describe('buildTranslationReport', () => {
+  it('reports keys missing from a language relative to the union', () => {
+    const report = buildTranslationReport([
+      { language: 'en', tree: { home: { title: 'Home', welcome: 'Hi' } } },
+      { language: 'pl', tree: { home: { title: 'Start' } } }
+    ], PLACEHOLDER);
+
+    const pl = report.find((r) => r.language === 'pl')!;
+    assert.deepStrictEqual(pl.missing, ['home.welcome']);
+    assert.deepStrictEqual(pl.untranslated, []);
+  });
+
+  it('reports keys still holding the placeholder as untranslated', () => {
+    const report = buildTranslationReport([
+      { language: 'en', tree: { home: { title: 'Home' } } },
+      { language: 'pl', tree: { home: { title: PLACEHOLDER } } }
+    ], PLACEHOLDER);
+
+    const pl = report.find((r) => r.language === 'pl')!;
+    assert.deepStrictEqual(pl.untranslated, ['home.title']);
+    assert.deepStrictEqual(pl.missing, []);
+  });
+
+  it('reports empty arrays for a fully translated language', () => {
+    const report = buildTranslationReport([
+      { language: 'en', tree: { home: { title: 'Home' } } },
+      { language: 'pl', tree: { home: { title: 'Start' } } }
+    ], PLACEHOLDER);
+
+    const en = report.find((r) => r.language === 'en')!;
+    assert.deepStrictEqual(en.missing, []);
+    assert.deepStrictEqual(en.untranslated, []);
+  });
+
+  it('sorts reported keys for stable output', () => {
+    const report = buildTranslationReport([
+      { language: 'en', tree: { z: 'Z', a: 'A', m: 'M' } },
+      { language: 'pl', tree: {} }
+    ], PLACEHOLDER);
+
+    assert.deepStrictEqual(report.find((r) => r.language === 'pl')!.missing, ['a', 'm', 'z']);
   });
 });
 

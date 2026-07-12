@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
-import { ExtensionCommands, EXTENSION_IDENTIFIER } from './const';
+import { ExtensionCommands, EXTENSION_IDENTIFIER, MISSING_TRANSLATION_PLACEHOLDER } from './const';
 import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
 import { ExtensionUtils } from './utils/extensionUtils';
 import {
+  LanguageReport,
   Mode,
+  buildTranslationReport,
   checkForParamsInSelection,
   generateKey,
   isKeyValid,
@@ -159,6 +161,51 @@ export class Commands {
       const translations = await FileSystemManager.fetchJson();
       await FileSystemManager.saveJson(sortObject(translations));
     });
+  }
+
+  /**
+   * Registers the command that reports, per language, which keys are missing or
+   * still hold the placeholder value across the i18n folder, rendering the
+   * result as a Markdown document.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerShowTranslationReport(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SHOW_TRANSLATION_REPORT}`, async () => {
+      const languages = await FileSystemManager.getAllLanguageTranslations();
+      if (!languages.length) {
+        return NotificationManager.showErrorMessage('No i18n language files found');
+      }
+      const reports = buildTranslationReport(languages, MISSING_TRANSLATION_PLACEHOLDER);
+      const doc = await vscode.workspace.openTextDocument({
+        content: Commands.renderReport(reports),
+        language: 'markdown'
+      });
+      await vscode.window.showTextDocument(doc, { preview: false });
+    });
+  }
+
+  /** Renders the per-language translation report as a Markdown document. */
+  private static renderReport(reports: LanguageReport[]): string {
+    const lines: string[] = ['# Translation report', ''];
+    for (const report of reports) {
+      lines.push(`## ${report.language}`, '');
+      if (!report.missing.length && !report.untranslated.length) {
+        lines.push('✅ Fully translated', '');
+        continue;
+      }
+      if (report.missing.length) {
+        lines.push(`### Missing keys (${report.missing.length})`, '');
+        report.missing.forEach((key) => lines.push(`- \`${key}\``));
+        lines.push('');
+      }
+      if (report.untranslated.length) {
+        lines.push(`### Untranslated placeholders (${report.untranslated.length})`, '');
+        report.untranslated.forEach((key) => lines.push(`- \`${key}\``));
+        lines.push('');
+      }
+    }
+    return lines.join('\n');
   }
 
   /**

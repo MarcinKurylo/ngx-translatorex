@@ -5,6 +5,7 @@
 	"version": "0.1.0",
 	"publisher": "marcinex",
 	"license": "MIT",
+	"icon": "images/icon.png",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/MarcinKurylo/ngx-translatorex.git"
@@ -25,7 +26,7 @@
 		"localization"
 	],
 	"galleryBanner": {
-		"color": "#1976D2",
+		"color": "#1e3aa8",
 		"theme": "dark"
 	},
 	"activationEvents": [

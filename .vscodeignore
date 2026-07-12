@@ -9,6 +9,7 @@ test-setup/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
+images/*.svg
 eslint.config.mjs
 **/tsconfig.json
 **/*.map

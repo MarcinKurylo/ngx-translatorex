@@ -5,6 +5,8 @@ out/test/**
 
 src/**
 test-setup/**
+README.md
+README.marketplace.md
 .nvmrc
 .gitignore
 .yarnrc

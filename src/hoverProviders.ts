@@ -29,6 +29,7 @@ export class HoverProviders {
         if (hoveredMatch) {
           return new vscode.Hover(`${hoveredMatch}: ${FileSystemManager.cache[hoveredMatch] ??' No value for this key!'}`);
         }
+        return undefined;
       }
     });
   }

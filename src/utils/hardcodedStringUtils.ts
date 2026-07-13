@@ -196,17 +196,58 @@ export function locateHardcodedStrings(
   return located;
 }
 
+/** A parameter binding derived from interpolated template text. */
+export interface ExtractionParam {
+  /** The `{{ name }}` placeholder used inside the i18n value. */
+  name: string;
+  /** The original template expression to bind to it. */
+  expression: string;
+}
+
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+/**
+ * Splits interpolated template text into an i18n value (with normalised
+ * `{{ name }}` placeholders) and the params to bind. A simple identifier
+ * expression keeps its own name; a complex one (`user.name`, `a + b`) gets a
+ * generated `paramN` name. Repeated expressions reuse one name.
+ */
+export function normalizeInterpolation(text: string): { value: string; params: ExtractionParam[] } {
+  const params: ExtractionParam[] = [];
+  const nameByExpression = new Map<string, string>();
+  const value = text.replace(/\{\{\s*(.*?)\s*\}\}/g, (_match, raw: string) => {
+    const expression = raw.trim();
+    let name = nameByExpression.get(expression);
+    if (!name) {
+      name = IDENTIFIER.test(expression) ? expression : `param${params.length + 1}`;
+      nameByExpression.set(expression, name);
+      params.push({ name, expression });
+    }
+    return `{{ ${name} }}`;
+  });
+  return { value, params };
+}
+
+/** Builds the `translate` pipe snippet for a key, binding any params (object shorthand when the name matches the expression). */
+export function interpolationSnippet(key: string, params: ExtractionParam[]): string {
+  if (!params.length) {
+    return `{{ '${key}' | translate }}`;
+  }
+  const binding = params.map((param) => (param.name === param.expression ? param.name : `${param.name}: ${param.expression}`)).join(', ');
+  return `{{ '${key}' | translate:{ ${binding} } }}`;
+}
+
 /** A single planned extraction: where to replace, the key to create, and the snippet. */
 export interface PlannedExtraction {
   /** Offset of the text to replace in the source. */
   index: number;
   /** Length of the text to replace. */
   length: number;
-  /** The original user-facing text (the value for the new key). */
+  /** The i18n value for the new key (interpolations normalised to `{{ name }}`). */
   text: string;
   /** The generated dotted key. */
   key: string;
-  /** The replacement snippet (`{{ 'key' | translate }}`). */
+  /** The replacement snippet (`{{ 'key' | translate }}`, with param binding when needed). */
   snippet: string;
 }
 
@@ -215,8 +256,8 @@ export interface PlannedExtraction {
  * (empty scope → top-level keys). Keys are slugified from the text via
  * {@link generateKey}. Identical text reuses the same key (dedup); different text
  * that slugifies to the same key is disambiguated with a numeric suffix so no
- * value is ever overwritten. Candidates containing an interpolation are skipped
- * for now — binding their params during a bulk edit is out of scope.
+ * value is ever overwritten. Interpolated text is extracted too — its `{{ expr }}`
+ * tokens become `{{ name }}` in the stored value and are bound in the snippet.
  *
  * @returns One planned edit per replaceable occurrence, in source order.
  */
@@ -224,22 +265,20 @@ export function planBulkExtraction(candidates: HardcodedStringCandidate[], scope
   const keyToValue = new Map<string, string>();
   const plan: PlannedExtraction[] = [];
   for (const candidate of candidates) {
-    if (candidate.text.includes('{{')) {
-      continue;
-    }
+    const { value, params } = normalizeInterpolation(candidate.text);
     const base = generateKey(scope, candidate.text);
     let key = base;
     let suffix = 2;
-    while (keyToValue.has(key) && keyToValue.get(key) !== candidate.text) {
+    while (keyToValue.has(key) && keyToValue.get(key) !== value) {
       key = `${base}_${suffix++}`;
     }
-    keyToValue.set(key, candidate.text);
+    keyToValue.set(key, value);
     plan.push({
       index: candidate.index,
       length: candidate.length,
-      text: candidate.text,
+      text: value,
       key,
-      snippet: `{{ '${key}' | translate }}`
+      snippet: interpolationSnippet(key, params)
     });
   }
   return plan;

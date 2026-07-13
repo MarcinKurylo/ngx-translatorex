@@ -55,6 +55,7 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.hardcodedStringsMinLength` | Minimum length of a hard-coded string to flag. | `2` |
 | `ngx-translatorex.hardcodedStringsIgnore` | Strings to never flag (supports `*` wildcards). | `[]` |
 | `ngx-translatorex.autoTranslateOnCreate` | On adding a key, translate it into the other languages with your model instead of leaving placeholders. | `false` |
+| `ngx-translatorex.sortKeysOnSave` | Alphabetically sort each i18n file whenever the extension writes to it. | `false` |
 
 ## Commands
 

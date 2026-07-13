@@ -4,6 +4,19 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 ## [Unreleased]
 
+- Extract interpolated text: `extractString` and the bulk extract now handle text
+  with `{{ … }}` — the tokens become `{{ name }}` in the i18n value and are bound
+  in the snippet (`{{ 'key' | translate:{ userName } }}`), instead of being
+  skipped. Complex expressions get generated `paramN` names.
+- Param safety on the agent path: `setTranslations` (agent tool + MCP) now
+  validates each value against the main-language source and **skips** any that
+  drops or changes a `{{ param }}`, reporting the skipped count — the agent can no
+  longer corrupt interpolation tokens.
+- New agent/MCP tool `listUndefinedKeys` — keys referenced with the `translate`
+  pipe / `TranslateService` that exist in no i18n file (dead references), as
+  `{ file, line, key }`.
+- New setting `ngx-translatorex.sortKeysOnSave` (and `NGX_SORT_ON_SAVE` for the
+  MCP server): alphabetically sort each i18n file whenever it is written.
 - MCP server (`mcp/`): a standalone Model Context Protocol server exposing the
   i18n operations (`scanHardcodedStrings`, `extractString`,
   `listMissingTranslations`, `setTranslations`) to any MCP-capable agent

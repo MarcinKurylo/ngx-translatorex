@@ -162,6 +162,12 @@
 						"default": false,
 						"scope": "resource",
 						"description": "When a new key is added, immediately translate it into the other languages with your language model instead of leaving placeholders. Requires a language model provider (e.g. GitHub Copilot). Opt-in."
+					},
+					"ngx-translatorex.sortKeysOnSave": {
+						"type": "boolean",
+						"default": false,
+						"scope": "resource",
+						"description": "Alphabetically sort each i18n file (recursively) whenever the extension writes to it."
 					}
 				}
 			}
@@ -233,7 +239,7 @@
 				"toolReferenceName": "setTranslations",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Write many translations at once, across one or more language files, in a single operation. Prefer this over setTranslation when filling multiple keys (e.g. after listMissingTranslations). Preserve any {{ interpolation }} tokens exactly. Returns how many entries were written.",
+				"modelDescription": "Write many translations at once, across one or more language files, in a single operation. Prefer this over setTranslation when filling multiple keys (e.g. after listMissingTranslations). Preserve any {{ interpolation }} tokens exactly — a value that drops a param present in the source is rejected and reported as skipped. Returns how many entries were written and skipped.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {
@@ -253,6 +259,15 @@
 					},
 					"required": ["translations"]
 				}
+			},
+			{
+				"name": "ngx-translatorex_listUndefinedKeys",
+				"displayName": "List undefined key references",
+				"toolReferenceName": "listUndefinedKeys",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "List keys referenced with the translate pipe (HTML) or TranslateService (TypeScript) that do not exist in any i18n file — dead references. Returns { file, line, key }. Use it to find keys the code uses but no translation defines, then create them (setTranslations) or fix the reference.",
+				"inputSchema": { "type": "object", "properties": {} }
 			}
 		]
 	},

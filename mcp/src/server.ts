@@ -36,6 +36,11 @@ const tools = [
     inputSchema: { type: 'object', properties: {} }
   },
   {
+    name: 'listUndefinedKeys',
+    description: 'List translate-pipe / TranslateService key references in templates and components that do not exist in the main language file (dead references). Returns { file, line, key }.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
     name: 'setTranslations',
     description: 'Write many translations across language files at once. Preserve any {{ interpolation }} tokens exactly. Returns how many entries were written.',
     inputSchema: {
@@ -77,6 +82,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case 'listMissingTranslations':
         data = i18n.listMissing();
+        break;
+      case 'listUndefinedKeys':
+        data = i18n.listUndefinedKeys();
         break;
       case 'setTranslations':
         data = i18n.setTranslations((args.translations as { language: string; key: string; value: string }[]) ?? []);

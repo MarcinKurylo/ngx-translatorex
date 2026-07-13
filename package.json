@@ -15,7 +15,7 @@
 		"url": "https://github.com/MarcinKurylo/ngx-translatorex/issues"
 	},
 	"engines": {
-		"vscode": "^1.85.0",
+		"vscode": "^1.90.0",
 		"node": ">=20"
 	},
 	"categories": [
@@ -80,6 +80,10 @@
 			{
 				"command": "ngx-translatorex.showHardcodedStringsReport",
 				"title": "ngx-translatorex: Scan workspace for hard-coded strings"
+			},
+			{
+				"command": "ngx-translatorex.translatePlaceholders",
+				"title": "ngx-translatorex: Auto-translate missing placeholders (AI)"
 			}
 		],
 		"keybindings": [

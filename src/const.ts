@@ -29,5 +29,6 @@ export enum ExtensionCommands  {
   DELETE_TRANSLATION_KEY = 'deleteTranslationKey',
   EXTRACT_HARDCODED_STRING = 'extractHardcodedString',
   IGNORE_HARDCODED_STRING = 'ignoreHardcodedString',
-  SHOW_HARDCODED_STRINGS_REPORT = 'showHardcodedStringsReport'
+  SHOW_HARDCODED_STRINGS_REPORT = 'showHardcodedStringsReport',
+  TRANSLATE_PLACEHOLDERS = 'translatePlaceholders'
 }

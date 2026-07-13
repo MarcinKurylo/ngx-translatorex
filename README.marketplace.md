@@ -15,6 +15,7 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 - **Rename / delete keys** — rename or delete a key (a single leaf or a whole namespace) and the change propagates across every language file, each keeping its own value.
 - **Translation report** — run **Show translation report** for a per-language summary of keys that are missing or still hold the placeholder, so you always know what's left to translate.
 - **Hard-coded string detection (experimental, opt-in)** — flags untranslated user-facing text and `title`/`placeholder`/`aria-label`/`alt`/`matTooltip` values in templates as hints, with **Extract to i18n key** and **Ignore this string** quick fixes. Run **Scan workspace for hard-coded strings** for a project-wide report grouped by file. Enable with `ngx-translatorex.detectHardcodedStrings`.
+- **AI auto-translation** — run **Auto-translate missing placeholders** to fill every `[TODO]` placeholder using your own VS Code language model (e.g. GitHub Copilot) — no external translation service, no API key. Interpolation `{{ params }}` are preserved, and any translation that would drop them is skipped. Requires VS Code 1.90+ with a language model provider.
 - **Automatic refresh** — the extension watches your i18n file and reloads translations when it changes outside the editor (a manual edit, a `git pull`, or a branch switch), so tooltips and completions stay accurate.
 - **One-click JSON sort** — alphabetically sort your translation file, recursively.
 
@@ -65,6 +66,7 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.renameTranslationKey` | Rename a key across all language files. |
 | `ngx-translatorex.deleteTranslationKey` | Delete a key across all language files. |
 | `ngx-translatorex.showHardcodedStringsReport` | Scan every HTML template in the workspace for hard-coded strings. |
+| `ngx-translatorex.translatePlaceholders` | Auto-translate missing placeholders with your language model. |
 
 ## Requirements
 

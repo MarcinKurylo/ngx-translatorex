@@ -2,6 +2,16 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [Unreleased]
+
+- Auto-translate missing placeholders (AI): the **Auto-translate missing
+  placeholders** command fills every secondary-language `[TODO]` placeholder that
+  has a real main-language value, using your own VS Code language model
+  (e.g. GitHub Copilot) — no external translation service. It confirms the count
+  first, runs under a cancellable progress notification, keeps `{{ params }}`
+  intact, and skips any translation that drops or changes them so the file is
+  never corrupted. Requires VS Code 1.90+ with a language model provider.
+
 ## [0.4.0]
 
 - Hard-coded string detection (experimental, opt-in via

@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
 import { ExtensionCommands, EXTENSION_IDENTIFIER, INLINE_IGNORE_MARKER } from './const';
 import { LocatedHardcodedString, locateHardcodedStrings } from './utils/hardcodedStringUtils';
+import { LanguageModelManager } from './utils/languageModelManager';
+import { buildTranslationPrompt, paramsPreserved, sanitizeTranslation } from './utils/translationLmUtils';
 import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
@@ -391,6 +393,67 @@ export class Commands {
     }
     files.sort((a, b) => a.path.localeCompare(b.path));
     return { files, findingCount, scanned: uris.length };
+  }
+
+  /**
+   * Registers the command that auto-translates every untranslated placeholder in
+   * the secondary language files using the user's own language model (Copilot or
+   * similar) — no external translation service. It counts the fillable
+   * placeholders, asks for confirmation, then translates each one under a
+   * cancellable progress notification, keeping `{{ params }}` intact and skipping
+   * any translation that drops them.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerTranslatePlaceholders(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.TRANSLATE_PLACEHOLDERS}`, async () => {
+      if (!LanguageModelManager.isAvailable()) {
+        return NotificationManager.showErrorMessage('Auto-translation needs VS Code 1.90+ with a language model (e.g. GitHub Copilot).');
+      }
+      const placeholder = ExtensionConfigManager.getPlaceholder();
+      const items = await FileSystemManager.collectPlaceholders(placeholder);
+      if (!items.length) {
+        return NotificationManager.showInfoMessage('No untranslated placeholders to fill');
+      }
+      const model = await LanguageModelManager.selectModel();
+      if (!model) {
+        return NotificationManager.showErrorMessage('No language model available. Enable GitHub Copilot or another chat model provider.');
+      }
+      const confirm = await vscode.window.showWarningMessage(
+        `Translate ${items.length} placeholder(s) with ${model.name}? The source strings are sent to your language model.`,
+        { modal: true },
+        'Translate'
+      );
+      if (confirm !== 'Translate') {
+        return;
+      }
+      const result = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Translating placeholders…', cancellable: true },
+        (progress, token) => {
+          const translate = async (source: string, language: string) => {
+            const raw = await LanguageModelManager.complete(model, buildTranslationPrompt(source, language), token);
+            const text = sanitizeTranslation(raw);
+            return text && paramsPreserved(source, text) ? text : undefined;
+          };
+          let last = 0;
+          return FileSystemManager.applyPlaceholderTranslations(
+            items,
+            translate,
+            (done, total) => {
+              progress.report({ increment: ((done - last) / total) * 100, message: `${done}/${total}` });
+              last = done;
+            },
+            token
+          );
+        }
+      );
+      if (!result.saved) {
+        return;
+      }
+      NotificationManager.showInfoMessage(
+        `Filled ${result.filled} placeholder(s)${result.skipped ? `, skipped ${result.skipped}` : ''}`
+      );
+    });
   }
 
   /** Renders the workspace hard-coded-strings scan as a Markdown document. */

@@ -203,6 +203,93 @@ export class FileSystemManager {
   }
 
   /**
+   * Collects every secondary-language key still holding the placeholder for which
+   * the main language has a real value, so those can be auto-translated. Purely
+   * read-only — the returned items feed a confirmation prompt before any writes.
+   *
+   * @param placeholder The placeholder value that marks an untranslated key.
+   * @returns One item per fillable placeholder, with the target language, key and
+   * the main-language source text.
+   */
+  public static async collectPlaceholders(
+    placeholder: string
+  ): Promise<{ uri: vscode.Uri; language: string; key: string; source: string }[]> {
+    const mainUri = await FileSystemManager.getUri();
+    const uris = await FileSystemManager.getLanguageUris();
+    const mainFlat = flattenObject(await FileSystemManager.readJson(mainUri));
+    const items: { uri: vscode.Uri; language: string; key: string; source: string }[] = [];
+    for (const uri of uris) {
+      if (uri.toString() === mainUri.toString()) {
+        continue;
+      }
+      const language = uri.path.split('/').pop()!.replace(/\.json$/, '');
+      const flat = flattenObject(await FileSystemManager.readJson(uri));
+      for (const key of Object.keys(flat)) {
+        if (flat[key] === placeholder && typeof mainFlat[key] === 'string' && mainFlat[key] !== placeholder) {
+          items.push({ uri, language, key, source: mainFlat[key] });
+        }
+      }
+    }
+    return items;
+  }
+
+  /**
+   * Fills the given placeholder items by calling `translate` for each and writing
+   * the results back, one write per affected language file. Translations that
+   * come back empty or that failed validation (returned `undefined`) are counted
+   * as skipped and leave the placeholder untouched. Honours cancellation.
+   *
+   * @returns `saved` — whether writes succeeded; `filled`/`skipped` — item counts.
+   */
+  public static async applyPlaceholderTranslations(
+    items: { uri: vscode.Uri; language: string; key: string; source: string }[],
+    translate: (source: string, language: string) => Promise<string | undefined>,
+    report: (done: number, total: number) => void,
+    token: vscode.CancellationToken
+  ): Promise<{ saved: boolean; filled: number; skipped: number }> {
+    try {
+      const trees = new Map<string, { uri: vscode.Uri; tree: TranslationTree }>();
+      for (const item of items) {
+        const key = item.uri.toString();
+        if (!trees.has(key)) {
+          trees.set(key, { uri: item.uri, tree: await FileSystemManager.readJson(item.uri) });
+        }
+      }
+      const changed = new Set<string>();
+      let filled = 0;
+      let skipped = 0;
+      let done = 0;
+      for (const item of items) {
+        if (token.isCancellationRequested) {
+          break;
+        }
+        let translated: string | undefined;
+        try {
+          translated = await translate(item.source, item.language);
+        } catch {
+          translated = undefined;
+        }
+        if (translated) {
+          setKey(trees.get(item.uri.toString())!.tree, item.key, translated);
+          changed.add(item.uri.toString());
+          filled++;
+        } else {
+          skipped++;
+        }
+        report(++done, items.length);
+      }
+      for (const key of changed) {
+        const entry = trees.get(key)!;
+        await FileSystemManager.writeJson(entry.uri, entry.tree);
+      }
+      return { saved: true, filled, skipped };
+    } catch (e) {
+      NotificationManager.showErrorMessage('Save json failed');
+      return { saved: false, filled: 0, skipped: 0 };
+    }
+  }
+
+  /**
    * Re-reads the main translation file and rebuilds the flattened cache. Used to
    * keep the cache in sync after the file changes outside the extension.
    */

@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
-import { TranslationTree, deleteKey, findUntranslatedKeys, flattenObject, renameKey, setKey } from './translationUtils';
+import { TranslationTree, deleteKey, findUntranslatedKeys, flattenObject, renameKey, setKey, sortObject } from './translationUtils';
+import { paramsPreserved } from './translationLmUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
@@ -67,7 +68,8 @@ export class FileSystemManager {
    * also works in remote and virtual workspaces.
    */
   private static async writeJson(uri: vscode.Uri, tree: TranslationTree): Promise<void> {
-    const content = new TextEncoder().encode(JSON.stringify(tree, null, 2) + '\n');
+    const output = ExtensionConfigManager.getBooleanConfigValue('sortKeysOnSave', false) ? sortObject(tree) : tree;
+    const content = new TextEncoder().encode(JSON.stringify(output, null, 2) + '\n');
     await vscode.workspace.fs.writeFile(uri, content);
   }
 
@@ -322,13 +324,16 @@ export class FileSystemManager {
    * Writes many key/value translations across language files in one pass, reading
    * and writing each affected file once. Used by the agent `setTranslations` tool
    * so a bulk fill needs a single confirmation. Items for a language file that
-   * does not exist are skipped.
+   * does not exist are skipped. Each value is validated against the main-language
+   * source: a translation that drops or changes a `{{ param }}` is skipped rather
+   * than written, so an agent's output can never corrupt interpolation tokens.
    *
-   * @returns `saved` — whether writes succeeded; `written` — number of entries applied.
+   * @returns `saved` — whether writes succeeded; `written` — entries applied;
+   * `skipped` — entries rejected for losing a param.
    */
   public static async setTranslations(
     items: { language: string; key: string; value: string }[]
-  ): Promise<{ saved: boolean; written: number }> {
+  ): Promise<{ saved: boolean; written: number; skipped: number }> {
     try {
       const uris = await FileSystemManager.getLanguageUris();
       const uriByLanguage = new Map<string, vscode.Uri>();
@@ -336,12 +341,19 @@ export class FileSystemManager {
         uriByLanguage.set(uri.path.split('/').pop()!.replace(/\.json$/, ''), uri);
       }
       const mainLanguage = ExtensionConfigManager.getConfigValue('language') ?? 'en';
+      const mainFlat = flattenObject(await FileSystemManager.readJson(await FileSystemManager.getUri()));
       const trees = new Map<string, { uri: vscode.Uri; tree: TranslationTree }>();
       let written = 0;
+      let skipped = 0;
       let mainChanged = false;
       for (const item of items) {
         const uri = uriByLanguage.get(item.language);
         if (!uri) {
+          continue;
+        }
+        const source = mainFlat[item.key];
+        if (typeof source === 'string' && !paramsPreserved(source, item.value)) {
+          skipped++;
           continue;
         }
         const key = uri.toString();
@@ -361,10 +373,10 @@ export class FileSystemManager {
       if (mainChanged) {
         FileSystemManager.onCacheChanged?.();
       }
-      return { saved: true, written };
+      return { saved: true, written, skipped };
     } catch (e) {
       NotificationManager.showErrorMessage('Save json failed');
-      return { saved: false, written: 0 };
+      return { saved: false, written: 0, skipped: 0 };
     }
   }
 

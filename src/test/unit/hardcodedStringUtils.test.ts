@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { applyExtractionToText, findHardcodedStrings, locateHardcodedStrings, planBulkExtraction } from '../../utils/hardcodedStringUtils';
+import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation, planBulkExtraction } from '../../utils/hardcodedStringUtils';
 
 const texts = (html: string, options?: Parameters<typeof findHardcodedStrings>[1]) =>
   findHardcodedStrings(html, options).map((c) => c.text);
@@ -200,9 +200,10 @@ describe('planBulkExtraction', () => {
     assert.deepStrictEqual(plan.map((p) => [p.text, p.key]), [['Save', 'save'], ['Save!', 'save_2']]);
   });
 
-  it('skips candidates containing an interpolation', () => {
-    const plan = planBulkExtraction(find('<p>Hello {{ name }}</p><p>Plain</p>'), 's');
-    assert.deepStrictEqual(plan.map((p) => p.text), ['Plain']);
+  it('extracts interpolated text, normalising the value and binding the param', () => {
+    const [item] = planBulkExtraction(find('<p>Hello {{ userName }}</p>'), 'home');
+    assert.strictEqual(item.text, 'Hello {{ userName }}');
+    assert.strictEqual(item.snippet, `{{ 'home.hello_username' | translate:{ userName } }}`);
   });
 
   it('keeps candidates in source order', () => {
@@ -224,5 +225,40 @@ describe('applyExtractionToText', () => {
 
   it('returns the text unchanged for an empty plan', () => {
     assert.strictEqual(applyExtractionToText('<p>x</p>', []), '<p>x</p>');
+  });
+});
+
+describe('normalizeInterpolation', () => {
+  it('keeps identifier params by name', () => {
+    assert.deepStrictEqual(normalizeInterpolation('Hi {{ name }}'), {
+      value: 'Hi {{ name }}',
+      params: [{ name: 'name', expression: 'name' }]
+    });
+  });
+
+  it('generates names for complex expressions and reuses one per expression', () => {
+    const result = normalizeInterpolation('{{ user.name }} has {{ count + 1 }} of {{ user.name }}');
+    assert.strictEqual(result.value, '{{ param1 }} has {{ param2 }} of {{ param1 }}');
+    assert.deepStrictEqual(result.params, [
+      { name: 'param1', expression: 'user.name' },
+      { name: 'param2', expression: 'count + 1' }
+    ]);
+  });
+
+  it('leaves plain text untouched with no params', () => {
+    assert.deepStrictEqual(normalizeInterpolation('Just text'), { value: 'Just text', params: [] });
+  });
+});
+
+describe('interpolationSnippet', () => {
+  it('is a plain pipe with no params', () => {
+    assert.strictEqual(interpolationSnippet('a.b', []), `{{ 'a.b' | translate }}`);
+  });
+
+  it('uses object shorthand for identifier params and name:expr for complex ones', () => {
+    assert.strictEqual(
+      interpolationSnippet('a.b', [{ name: 'name', expression: 'name' }, { name: 'param2', expression: 'user.name' }]),
+      `{{ 'a.b' | translate:{ name, param2: user.name } }}`
+    );
   });
 });

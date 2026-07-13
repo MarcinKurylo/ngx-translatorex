@@ -3,7 +3,8 @@ import { TextDecoder, TextEncoder } from 'util';
 import { EXTENSION_IDENTIFIER, HTML_SCAN_EXCLUDE } from './const';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
-import { applyExtractionToText, findHardcodedStrings, locateHardcodedStrings, PlannedExtraction } from './utils/hardcodedStringUtils';
+import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation, PlannedExtraction } from './utils/hardcodedStringUtils';
+import { findTranslateKeys } from './utils/diagnosticsUtils';
 import { buildTranslationReport, flattenObject } from './utils/translationUtils';
 
 /** Tool names, namespaced under the extension id (must match package.json contributions). */
@@ -12,7 +13,8 @@ const TOOL = {
   extract: `${EXTENSION_IDENTIFIER}_extractString`,
   listMissing: `${EXTENSION_IDENTIFIER}_listMissingTranslations`,
   setTranslation: `${EXTENSION_IDENTIFIER}_setTranslation`,
-  setTranslations: `${EXTENSION_IDENTIFIER}_setTranslations`
+  setTranslations: `${EXTENSION_IDENTIFIER}_setTranslations`,
+  listUndefinedKeys: `${EXTENSION_IDENTIFIER}_listUndefinedKeys`
 };
 
 /** How many template files to read at once during a scan. */
@@ -53,7 +55,8 @@ export class LanguageModelTools {
       vscode.lm.registerTool(TOOL.extract, LanguageModelTools.extractTool()),
       vscode.lm.registerTool(TOOL.listMissing, LanguageModelTools.listMissingTool()),
       vscode.lm.registerTool(TOOL.setTranslation, LanguageModelTools.setTranslationTool()),
-      vscode.lm.registerTool(TOOL.setTranslations, LanguageModelTools.setTranslationsTool())
+      vscode.lm.registerTool(TOOL.setTranslations, LanguageModelTools.setTranslationsTool()),
+      vscode.lm.registerTool(TOOL.listUndefinedKeys, LanguageModelTools.listUndefinedKeysTool())
     ];
   }
 
@@ -82,28 +85,21 @@ export class LanguageModelTools {
         }
         const decoder = new TextDecoder();
         const source = decoder.decode(await vscode.workspace.fs.readFile(uri));
-        if (text.includes('{{')) {
-          return result({ extracted: 0, message: 'Cannot bulk-extract text containing an interpolation; extract it manually to bind its params.' });
-        }
+        const { value, params } = normalizeInterpolation(text);
+        const snippet = interpolationSnippet(key, params);
         const plan: PlannedExtraction[] = findHardcodedStrings(source, detectionOptions())
           .filter((candidate) => candidate.text === text)
-          .map((candidate) => ({
-            index: candidate.index,
-            length: candidate.length,
-            text: candidate.text,
-            key,
-            snippet: `{{ '${key}' | translate }}`
-          }));
+          .map((candidate) => ({ index: candidate.index, length: candidate.length, text: value, key, snippet }));
         if (!plan.length) {
           return result({ extracted: 0, message: `No hard-coded occurrence of that exact text found in ${file}` });
         }
         await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(applyExtractionToText(source, plan)));
-        const { saved } = await FileSystemManager.addTranslation(key, text);
+        const { saved } = await FileSystemManager.addTranslation(key, value);
         if (saved) {
-          FileSystemManager.cache[key] = text;
+          FileSystemManager.cache[key] = value;
           FileSystemManager.onCacheChanged?.();
         }
-        return result({ key, extracted: plan.length, keyCreated: saved });
+        return result({ key, extracted: plan.length, keyCreated: saved, params: params.map((param) => param.name) });
       }
     };
   }
@@ -165,10 +161,47 @@ export class LanguageModelTools {
         };
       },
       invoke: async (options) => {
-        const { saved, written } = await FileSystemManager.setTranslations(options.input.translations ?? []);
-        return result({ saved, written });
+        const { saved, written, skipped } = await FileSystemManager.setTranslations(options.input.translations ?? []);
+        return result({ saved, written, skipped });
       }
     };
+  }
+
+  /** Tool: list keys referenced in templates/components that don't exist in any i18n file. */
+  private static listUndefinedKeysTool(): vscode.LanguageModelTool<Record<string, never>> {
+    return {
+      invoke: async (_options, token) => result(await LanguageModelTools.scanUndefinedKeys(token))
+    };
+  }
+
+  /**
+   * Scans HTML and TypeScript for `translate` key references that are absent from
+   * the current translations, returning `{ file, line, key }` records.
+   */
+  private static async scanUndefinedKeys(token: vscode.CancellationToken): Promise<{ file: string; line: number; key: string }[]> {
+    const decoder = new TextDecoder();
+    const uris = await vscode.workspace.findFiles('**/*.{html,ts}', HTML_SCAN_EXCLUDE, undefined, token);
+    const undefinedKeys: { file: string; line: number; key: string }[] = [];
+    let next = 0;
+    const worker = async () => {
+      while (next < uris.length && !token.isCancellationRequested) {
+        const uri = uris[next++];
+        try {
+          const text = decoder.decode(await vscode.workspace.fs.readFile(uri));
+          const languageId = uri.path.endsWith('.ts') ? 'typescript' : 'html';
+          for (const ref of findTranslateKeys(text, languageId)) {
+            if (FileSystemManager.cache[ref.key] === undefined) {
+              const line = text.slice(0, ref.index).split('\n').length;
+              undefinedKeys.push({ file: vscode.workspace.asRelativePath(uri), line, key: ref.key });
+            }
+          }
+        } catch {
+          // Unreadable file — skip it.
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(SCAN_CONCURRENCY, uris.length) }, worker));
+    return undefinedKeys;
   }
 
   /**

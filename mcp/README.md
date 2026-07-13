@@ -15,9 +15,10 @@ from an external agent.
 | Tool | Purpose |
 | --- | --- |
 | `scanHardcodedStrings` | Find hard-coded strings in HTML templates → `{ file, line, text }[]` |
-| `extractString` | Replace a string with a `translate` pipe and add its key across languages |
+| `extractString` | Replace a string with a `translate` pipe and add its key across languages (interpolated text is bound as params) |
 | `listMissingTranslations` | Per language, keys missing/untranslated with their source text |
-| `setTranslations` | Write many translations at once |
+| `listUndefinedKeys` | Keys referenced in code but defined in no i18n file (dead references) |
+| `setTranslations` | Write many translations at once (values that drop a `{{ param }}` are skipped) |
 
 ## Build
 
@@ -37,6 +38,7 @@ The server is pointed at a project via environment variables:
 | `NGX_I18N_DIR` | `<root>/src/assets/i18n` | Folder holding `<lang>.json` files |
 | `NGX_MAIN_LANG` | `en` | Main language code |
 | `NGX_PLACEHOLDER` | `[TODO] translation not implemented` | Untranslated-key placeholder |
+| `NGX_SORT_ON_SAVE` | `false` | Set to `true` to alphabetically sort each i18n file on write |
 
 ### Claude Desktop (`claude_desktop_config.json`)
 

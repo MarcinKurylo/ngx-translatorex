@@ -4,6 +4,12 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 ## [Unreleased]
 
+- MCP server (`mcp/`): a standalone Model Context Protocol server exposing the
+  i18n operations (`scanHardcodedStrings`, `extractString`,
+  `listMissingTranslations`, `setTranslations`) to any MCP-capable agent
+  (Claude Desktop, Claude Code, …), not just Copilot. Reuses the extension's pure
+  logic; shipped as a separate tool in the repo (not bundled in the extension).
+  See `mcp/README.md`.
 - Auto-translate on key creation (opt-in `ngx-translatorex.autoTranslateOnCreate`):
   when you add a key (extraction or the "Create i18n key" quick fix), it's
   immediately translated into every other language with your language model

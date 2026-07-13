@@ -11,6 +11,10 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
   change to every language file, moving each file's own value.
 - Delete i18n key: delete a key from every language file, pruning any objects
   left empty by the removal.
+- Settings: `placeholder` (customise the untranslated-key placeholder),
+  `diagnostics` (toggle missing-key warnings off in projects with many dynamic
+  keys), and `syncLanguages` (toggle writing placeholders into other language
+  files when adding a key).
 
 ## [0.0.1]
 

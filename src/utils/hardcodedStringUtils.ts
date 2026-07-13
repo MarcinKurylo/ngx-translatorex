@@ -4,11 +4,13 @@
  * be unit-tested directly; the provider maps the returned offsets to editor
  * positions and diagnostics.
  *
- * The heuristic here is intentionally minimal — it is the infrastructure seam
- * the real detection quality will be tuned behind. It flags text nodes and a
- * small set of attributes (`title`, `placeholder`, `aria-label`) that contain a
- * letter and are not already an Angular binding, while skipping `<script>` /
- * `<style>` content, comments, and anything the ignore mechanisms exclude.
+ * It flags text nodes and a set of user-facing attributes (`title`,
+ * `placeholder`, `aria-label`, `alt`, `matTooltip`) that contain a real word.
+ * Text mixing static words with interpolations ("Hello {{ name }}") is kept
+ * whole so the extraction flow can bind its params, while pure bindings, pure
+ * numbers/symbols, single characters, code-like tokens (URLs, paths,
+ * identifiers), `<script>`/`<style>` content, comments, and anything the ignore
+ * mechanisms exclude are skipped.
  */
 
 /** A candidate hard-coded string found in template source text. */
@@ -30,13 +32,17 @@ export interface HardcodedStringOptions {
 }
 
 /** Attributes whose literal values are treated as user-facing text. */
-const TEXT_ATTRIBUTES = ['title', 'placeholder', 'aria-label'];
+const TEXT_ATTRIBUTES = ['title', 'placeholder', 'aria-label', 'alt', 'matTooltip'];
 
 /** Blocks whose content must never be scanned (masked out, offsets preserved). */
 const MASKED_BLOCKS = /<script\b[^>]*>[\s\S]*?<\/script>|<style\b[^>]*>[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi;
 
-/** Text between two tags. The text itself never contains `<`. */
-const TEXT_NODE = />([^<]+)</g;
+/**
+ * A run of text ending at a tag — either following a `>` or at the very start of
+ * the document. The trailing `<` is matched via lookahead so it stays available
+ * for the next text node. The text itself never contains `<`.
+ */
+const TEXT_NODE = /(?:^|>)([^<]+)(?=<)/g;
 
 /** A plain (non-bound) `title`/`placeholder`/`aria-label` attribute with a quoted value. */
 const TEXT_ATTRIBUTE = new RegExp(`(?<=\\s)(?:${TEXT_ATTRIBUTES.join('|')})\\s*=\\s*(['"])(.*?)\\1`, 'g');
@@ -44,8 +50,32 @@ const TEXT_ATTRIBUTE = new RegExp(`(?<=\\s)(?:${TEXT_ATTRIBUTES.join('|')})\\s*=
 /** Marker that, on a candidate's line or the line above it, suppresses detection. */
 const INLINE_IGNORE = 'i18n-ignore';
 
-const hasLetter = (text: string): boolean =>
-  /\p{L}/u.test(text.replace(/&[a-z]+;|&#\d+;/gi, ''));
+/** An Angular interpolation binding within otherwise-static text. */
+const INTERPOLATION = /\{\{[\s\S]*?\}\}/g;
+
+/** HTML entities, stripped before the word check so `&nbsp;` etc. don't count as text. */
+const ENTITY = /&[a-z]+;|&#\d+;/gi;
+
+/**
+ * Whether the text contains a real word — a run of at least two letters once
+ * entities are removed. Filters out pure numbers, symbols, icons, single
+ * characters and version-like tokens (`v2`, `×`, `42`).
+ */
+const hasWord = (text: string): boolean => /\p{L}{2,}/u.test(text.replace(ENTITY, ''));
+
+/**
+ * Whether a single-token string looks like code rather than prose — a URL, a
+ * path, a snake_case / camelCase / dotted identifier, or a `#`/`@` reference —
+ * so literal keys, routes and technical values are not flagged. Only applied to
+ * whitespace-free text without interpolation, so real sentences never match.
+ */
+const looksTechnical = (token: string): boolean =>
+  /:\/\//.test(token) ||
+  /^\.{0,2}\//.test(token) ||
+  /^[#@]/.test(token) ||
+  token.includes('_') ||
+  /\p{Ll}\p{Lu}/u.test(token) ||
+  /\p{L}\.\p{L}/u.test(token);
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -99,7 +129,16 @@ export function findHardcodedStrings(
     const leading = rawText.length - rawText.trimStart().length;
     const text = rawText.trim();
     const index = rawIndex + leading;
-    if (text.length < minLength || text.includes('{{') || !hasLetter(text)) {
+    // Static text with interpolations blanked out — a node that is only an
+    // interpolation (`{{ user.name }}`, `{{ 'k' | translate }}`) has no static
+    // word left and is skipped, while mixed text ("Hello {{ name }}") is kept
+    // whole so the extraction flow can bind its params.
+    const staticText = text.replace(INTERPOLATION, ' ');
+    if (text.length < minLength || !hasWord(staticText)) {
+      return;
+    }
+    const singleToken = !/\s/.test(text) && !text.includes('{{');
+    if (singleToken && looksTechnical(text)) {
       return;
     }
     if (matchesIgnorePattern(text, ignore)) {
@@ -113,7 +152,7 @@ export function findHardcodedStrings(
   };
 
   for (const match of masked.matchAll(TEXT_NODE)) {
-    consider(match[1], match.index! + 1);
+    consider(match[1], match.index! + match[0].length - match[1].length);
   }
   for (const match of masked.matchAll(TEXT_ATTRIBUTE)) {
     const valueOffset = match.index! + match[0].indexOf(match[1]) + 1;

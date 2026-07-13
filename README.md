@@ -28,6 +28,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Go-to-definition (F12 / Ctrl+Click) on a `translate` key jumps to its line in the main language JSON.
 - Rename or delete a key with propagation across every language file.
 - Configurable settings: placeholder text, diagnostics on/off, and multi-language sync on/off.
+- Experimental, opt-in hard-coded-string detection in HTML templates (Information hints) with extract/ignore quick fixes.
 - Per-language translation report (missing and untranslated keys across the i18n folder).
 - Automatic cache refresh via a file watcher when the i18n file changes outside the editor.
 - One-click recursive JSON sort.
@@ -42,10 +43,15 @@ settings and commands.
 - `src/utils/*` — editor-facing helpers (selection, snippets, config, file I/O,
   the i18n file watcher, notifications).
 - `src/commands.ts`, `src/hoverProviders.ts`, `src/completionProviders.ts`,
-  `src/diagnosticsProvider.ts` — the contributed commands and providers
-  (including missing-key diagnostics and their quick fix).
+  `src/definitionProviders.ts`, `src/diagnosticsProvider.ts`,
+  `src/hardcodedStringsProvider.ts` — the contributed commands and providers
+  (missing-key diagnostics, go-to-definition, and the opt-in hard-coded-string
+  hints with their extract/ignore quick fixes).
 - `src/utils/diagnosticsUtils.ts` — pure, `vscode`-free detection of
   translate-key references in HTML/TS. Unit-tested directly.
+- `src/utils/hardcodedStringUtils.ts` — pure, `vscode`-free detection of
+  hard-coded user-facing strings in HTML templates (the heuristic seam behind
+  the opt-in hints). Unit-tested directly.
 - `src/extension.ts` — activation: warms the cache, starts the watcher, wires up
   disposables.
 

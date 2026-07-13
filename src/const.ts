@@ -1,6 +1,14 @@
 export const EXTENSION_IDENTIFIER = 'ngx-translatorex';
 export type ConfigValue = 'language' | 'mode' | 'path' | 'placeholder';
-export type BooleanConfigValue = 'diagnostics' | 'syncLanguages';
+export type BooleanConfigValue = 'diagnostics' | 'syncLanguages' | 'detectHardcodedStrings';
+export type NumberConfigValue = 'hardcodedStringsMinLength';
+export type ArrayConfigValue = 'hardcodedStringsIgnore';
+
+/** Diagnostic source for hard-coded-string findings, kept distinct from missing-key diagnostics. */
+export const HARDCODED_DIAGNOSTIC_SOURCE = 'ngx-translatorex (hardcoded string)';
+
+/** Inline marker inserted by the "Ignore" quick fix to suppress detection on the next line. */
+export const INLINE_IGNORE_MARKER = '<!-- i18n-ignore -->';
 
 /**
  * Placeholder written for a new key into every language file other than the
@@ -18,5 +26,7 @@ export enum ExtensionCommands  {
   CREATE_TRANSLATION_KEY = 'createTranslationKey',
   SHOW_TRANSLATION_REPORT = 'showTranslationReport',
   RENAME_TRANSLATION_KEY = 'renameTranslationKey',
-  DELETE_TRANSLATION_KEY = 'deleteTranslationKey'
+  DELETE_TRANSLATION_KEY = 'deleteTranslationKey',
+  EXTRACT_HARDCODED_STRING = 'extractHardcodedString',
+  IGNORE_HARDCODED_STRING = 'ignoreHardcodedString'
 }

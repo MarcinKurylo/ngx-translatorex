@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ExtensionCommands, EXTENSION_IDENTIFIER } from './const';
+import { ExtensionCommands, EXTENSION_IDENTIFIER, INLINE_IGNORE_MARKER } from './const';
 import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
@@ -229,6 +229,47 @@ export class Commands {
       return undefined;
     }
     return vscode.window.showQuickPick(keys.sort(), { title, placeHolder: 'Select a key' });
+  }
+
+  /**
+   * Registers the command backing the "Extract to i18n key" quick fix on a
+   * hard-coded-string diagnostic: it focuses the document, selects the flagged
+   * range and delegates to the existing add-translation flow, so extraction
+   * behaves exactly as a manual selection would.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerExtractHardcodedString(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.EXTRACT_HARDCODED_STRING}`, async (uri?: vscode.Uri, range?: vscode.Range) => {
+      if (!uri || !range) {
+        return;
+      }
+      const document = await vscode.workspace.openTextDocument(uri);
+      const editor = await vscode.window.showTextDocument(document);
+      editor.selection = new vscode.Selection(range.start, range.end);
+      await vscode.commands.executeCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.ADD_NEW_TRANSLATION}`);
+    });
+  }
+
+  /**
+   * Registers the command backing the "Ignore this string" quick fix: it inserts
+   * an inline `<!-- i18n-ignore -->` marker on the line above the flagged range,
+   * matching its indentation, so detection skips that string from then on.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerIgnoreHardcodedString(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.IGNORE_HARDCODED_STRING}`, async (uri?: vscode.Uri, range?: vscode.Range) => {
+      if (!uri || !range) {
+        return;
+      }
+      const document = await vscode.workspace.openTextDocument(uri);
+      const line = document.lineAt(range.start.line);
+      const indent = line.text.slice(0, line.firstNonWhitespaceCharacterIndex);
+      const edit = new vscode.WorkspaceEdit();
+      edit.insert(uri, new vscode.Position(range.start.line, 0), `${indent}${INLINE_IGNORE_MARKER}\n`);
+      await vscode.workspace.applyEdit(edit);
+    });
   }
 
   /**

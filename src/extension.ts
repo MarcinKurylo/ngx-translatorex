@@ -3,6 +3,7 @@ import { Commands } from './commands';
 import { CompletionProviders } from './completionProviders';
 import { HoverProviders } from './hoverProviders';
 import { DiagnosticsProvider } from './diagnosticsProvider';
+import { HardcodedStringsProvider } from './hardcodedStringsProvider';
 import { DefinitionProviders } from './definitionProviders';
 import { EXTENSION_IDENTIFIER } from './const';
 import { FileSystemManager } from './utils/fileSystemManager';
@@ -17,6 +18,7 @@ import { FileSystemManager } from './utils/fileSystemManager';
  */
 export const activate = async (context: vscode.ExtensionContext) => {
 	const diagnostics = DiagnosticsProvider.register();
+	const hardcodedStrings = HardcodedStringsProvider.register();
 	FileSystemManager.onCacheChanged = () => DiagnosticsProvider.refreshAll();
 	await FileSystemManager.refreshCache();
 	FileSystemManager.watchTranslationFile();
@@ -25,6 +27,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		if (event.affectsConfiguration(EXTENSION_IDENTIFIER)) {
 			FileSystemManager.watchTranslationFile();
 			await FileSystemManager.refreshCache();
+			HardcodedStringsProvider.refreshAll();
 		}
 	});
 
@@ -37,7 +40,9 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		Commands.registerCreateTranslationKey(),
 		Commands.registerShowTranslationReport(),
 		Commands.registerRenameTranslationKey(),
-		Commands.registerDeleteTranslationKey()
+		Commands.registerDeleteTranslationKey(),
+		Commands.registerExtractHardcodedString(),
+		Commands.registerIgnoreHardcodedString()
 	];
 
 	const hoverProviders = [
@@ -58,6 +63,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		...definitionProviders,
 		...completionProviders,
 		...diagnostics,
+		...hardcodedStrings,
 		configListener,
 		{ dispose: () => FileSystemManager.disposeWatcher() }
 	);

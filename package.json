@@ -116,6 +116,25 @@
 						"default": true,
 						"scope": "resource",
 						"description": "When adding a new key, also write a placeholder into every other language file so the key exists in all languages."
+					},
+					"ngx-translatorex.detectHardcodedStrings": {
+						"type": "boolean",
+						"default": false,
+						"scope": "resource",
+						"description": "Experimental: flag hard-coded (untranslated) user-facing strings in HTML templates as hints, with quick fixes to extract or ignore them. Opt-in."
+					},
+					"ngx-translatorex.hardcodedStringsMinLength": {
+						"type": "number",
+						"default": 2,
+						"scope": "resource",
+						"description": "Minimum length of a hard-coded string to flag. Shorter strings are ignored."
+					},
+					"ngx-translatorex.hardcodedStringsIgnore": {
+						"type": "array",
+						"items": { "type": "string" },
+						"default": [],
+						"scope": "resource",
+						"description": "Strings to never flag as hard-coded. Supports '*' wildcards (e.g. 'OK', '© *')."
 					}
 				}
 			}

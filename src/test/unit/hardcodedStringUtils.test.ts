@@ -16,9 +16,34 @@ describe('findHardcodedStrings', () => {
     assert.strictEqual(html.slice(candidate.index, candidate.index + candidate.length), 'Save');
   });
 
-  it('flags title, placeholder and aria-label attributes', () => {
-    const html = `<input placeholder="Your name" title="Full name" aria-label="Name field">`;
-    assert.deepStrictEqual(texts(html), ['Your name', 'Full name', 'Name field']);
+  it('flags title, placeholder, aria-label, alt and matTooltip attributes', () => {
+    const html = `<input placeholder="Your name" title="Full name" aria-label="Name field">` +
+      `<img alt="Company logo"><button matTooltip="Save changes"></button>`;
+    assert.deepStrictEqual(texts(html), ['Your name', 'Full name', 'Name field', 'Company logo', 'Save changes']);
+  });
+
+  it('keeps text mixing static words with an interpolation, whole', () => {
+    assert.deepStrictEqual(texts('<p>Hello {{ name }}</p>'), ['Hello {{ name }}']);
+    assert.deepStrictEqual(texts(`<p>{{ count }} items left</p>`), ['{{ count }} items left']);
+  });
+
+  it('still skips a node that is only an interpolation or pipe', () => {
+    assert.deepStrictEqual(texts('<p>{{ user.name }}</p>'), []);
+    assert.deepStrictEqual(texts(`<p>{{ 'a' | translate }}</p>`), []);
+  });
+
+  it('skips version-like and symbol tokens without a real word', () => {
+    assert.deepStrictEqual(texts('<span>v2.0</span><span>3.14</span><span>100%</span>'), []);
+  });
+
+  it('skips code-like single tokens (urls, paths, identifiers)', () => {
+    const html = `<a>https://example.com</a><span>./assets/x</span><span>user_id</span>` +
+      `<span>camelCase</span><span>home.title</span><span>#anchor</span>`;
+    assert.deepStrictEqual(texts(html), []);
+  });
+
+  it('keeps ordinary single-word prose', () => {
+    assert.deepStrictEqual(texts('<button>Cancel</button><b>Welcome!</b>'), ['Cancel', 'Welcome!']);
   });
 
   it('skips numbers, whitespace, single characters and icons', () => {

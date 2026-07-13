@@ -244,3 +244,16 @@ export function planBulkExtraction(candidates: HardcodedStringCandidate[], scope
   }
   return plan;
 }
+
+/**
+ * Applies a planned extraction to the source text, replacing each occurrence
+ * with its snippet. Edits are applied from last to first so earlier offsets stay
+ * valid. Pure, so it can back both an in-editor edit and a file-system write.
+ */
+export function applyExtractionToText(text: string, plan: PlannedExtraction[]): string {
+  let result = text;
+  for (const item of [...plan].sort((a, b) => b.index - a.index)) {
+    result = result.slice(0, item.index) + item.snippet + result.slice(item.index + item.length);
+  }
+  return result;
+}

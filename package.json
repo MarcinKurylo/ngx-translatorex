@@ -15,7 +15,7 @@
 		"url": "https://github.com/MarcinKurylo/ngx-translatorex/issues"
 	},
 	"engines": {
-		"vscode": "^1.90.0",
+		"vscode": "^1.95.0",
 		"node": ">=20"
 	},
 	"categories": [
@@ -157,6 +157,68 @@
 						"scope": "resource",
 						"description": "Strings to never flag as hard-coded. Supports '*' wildcards (e.g. 'OK', '© *')."
 					}
+				}
+			}
+		],
+		"languageModelTools": [
+			{
+				"name": "ngx-translatorex_scanHardcodedStrings",
+				"displayName": "Scan hard-coded strings",
+				"toolReferenceName": "scanHardcodedStrings",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Scan Angular HTML templates for hard-coded (untranslated) user-facing strings. Returns a JSON array of { file, line, text }. Call this first to discover what needs extracting. Optionally pass a single workspace-relative .html file to scan only that file.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"file": {
+							"type": "string",
+							"description": "Optional workspace-relative path to a single .html template. Omit to scan the whole workspace."
+						}
+					}
+				}
+			},
+			{
+				"name": "ngx-translatorex_extractString",
+				"displayName": "Extract hard-coded string to i18n key",
+				"toolReferenceName": "extractString",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Extract a hard-coded string from a template into an i18n key: replaces every hard-coded occurrence of the exact text in the file with a `{{ 'key' | translate }}` pipe and writes the key (with the text as its main-language value) across all language files. Choose a meaningful, nested key name (e.g. 'page.title', 'actions.save'). Returns the key and how many occurrences were replaced.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"file": { "type": "string", "description": "Workspace-relative path to the .html template." },
+						"text": { "type": "string", "description": "The exact hard-coded text to extract, as returned by the scan tool." },
+						"key": { "type": "string", "description": "The dotted i18n key to create, e.g. 'page.title'." }
+					},
+					"required": ["file", "text", "key"]
+				}
+			},
+			{
+				"name": "ngx-translatorex_listMissingTranslations",
+				"displayName": "List missing translations",
+				"toolReferenceName": "listMissingTranslations",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "List, per secondary language, the i18n keys that are missing or still hold the untranslated placeholder, each with its main-language source text. Use this to know what to translate, then call setTranslation for each.",
+				"inputSchema": { "type": "object", "properties": {} }
+			},
+			{
+				"name": "ngx-translatorex_setTranslation",
+				"displayName": "Set a translation",
+				"toolReferenceName": "setTranslation",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Write a single translation into one language file: sets the given key to the given value in <language>.json. Preserve any {{ interpolation }} tokens from the source text exactly. Returns whether the write succeeded.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"language": { "type": "string", "description": "Target language code / file name without extension, e.g. 'pl'." },
+						"key": { "type": "string", "description": "The dotted i18n key to write." },
+						"value": { "type": "string", "description": "The translated value, keeping any {{ params }} intact." }
+					},
+					"required": ["language", "key", "value"]
 				}
 			}
 		]

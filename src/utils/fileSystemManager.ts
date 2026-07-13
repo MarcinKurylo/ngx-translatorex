@@ -290,6 +290,36 @@ export class FileSystemManager {
   }
 
   /**
+   * Writes a single key/value into one language file (creating nested subtrees as
+   * needed), used by the agent `setTranslation` tool. When the target is the main
+   * language, the flattened cache is updated too.
+   *
+   * @returns `true` on success, `false` when the language file is missing or the
+   * write fails.
+   */
+  public static async setTranslationForLanguage(language: string, key: string, value: string): Promise<boolean> {
+    try {
+      const uris = await FileSystemManager.getLanguageUris();
+      const uri = uris.find((candidate) => candidate.path.split('/').pop() === `${language}.json`);
+      if (!uri) {
+        NotificationManager.showErrorMessage(`No ${language}.json found in the i18n folder`);
+        return false;
+      }
+      const tree = await FileSystemManager.readJson(uri);
+      setKey(tree, key, value);
+      await FileSystemManager.writeJson(uri, tree);
+      if (language === (ExtensionConfigManager.getConfigValue('language') ?? 'en')) {
+        FileSystemManager.cache[key] = value;
+        FileSystemManager.onCacheChanged?.();
+      }
+      return true;
+    } catch (e) {
+      NotificationManager.showErrorMessage('Save json failed');
+      return false;
+    }
+  }
+
+  /**
    * Re-reads the main translation file and rebuilds the flattened cache. Used to
    * keep the cache in sync after the file changes outside the extension.
    */

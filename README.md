@@ -32,6 +32,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Workspace-wide hard-coded-strings scan (cancellable, bounded-concurrency) that reports every untranslated template string grouped by file.
 - AI auto-translation of `[TODO]` placeholders via the VS Code Language Model API (your own model, no external service), preserving `{{ params }}`.
 - One-command pipeline: extract every hard-coded string in a template into i18n keys (single undoable edit) and auto-translate the new placeholders.
+- Agent tools (VS Code Language Model Tools) so an AI agent can drive the whole scan → extract → translate flow, choosing semantic key names itself.
 - Per-language translation report (missing and untranslated keys across the i18n folder).
 - Automatic cache refresh via a file watcher when the i18n file changes outside the editor.
 - One-click recursive JSON sort.
@@ -60,6 +61,10 @@ settings and commands.
   directly.
 - `src/utils/languageModelManager.ts` — thin wrapper over the VS Code Language
   Model API (`vscode.lm`): model selection and request streaming.
+- `src/languageModelTools.ts` — registers the Language Model tools
+  (`scanHardcodedStrings`, `extractString`, `listMissingTranslations`,
+  `setTranslation`) that let an AI agent orchestrate the i18n flow; each is a
+  thin, structured wrapper over the same engine the commands use.
 - `src/extension.ts` — activation: warms the cache, starts the watcher, wires up
   disposables.
 

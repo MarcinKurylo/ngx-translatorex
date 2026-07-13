@@ -4,6 +4,14 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 ## [Unreleased]
 
+- Agent tools (VS Code Language Model Tools): the extension now exposes its core
+  operations as tools an AI agent (e.g. Copilot's agent mode) can orchestrate —
+  `scanHardcodedStrings` (find hard-coded strings as structured data),
+  `extractString` (extract a string into a key the agent names, e.g.
+  `page.title`), `listMissingTranslations` (what's missing/untranslated, with
+  source text) and `setTranslation` (write a translation into one language
+  file). This lets an agent run the whole scan → extract → translate flow. The
+  mutating tools ask for confirmation. Requires VS Code 1.95+ (`engines` bumped).
 - Extract all hard-coded strings in a template: the **Extract all hard-coded
   strings in this template** command turns every hard-coded string in the active
   HTML file into i18n keys under a scope you choose (empty scope → top-level

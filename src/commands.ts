@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
-import { ExtensionCommands, EXTENSION_IDENTIFIER, INLINE_IGNORE_MARKER } from './const';
+import { ExtensionCommands, EXTENSION_IDENTIFIER, HTML_SCAN_EXCLUDE, INLINE_IGNORE_MARKER } from './const';
 import { LocatedHardcodedString, findHardcodedStrings, locateHardcodedStrings, planBulkExtraction } from './utils/hardcodedStringUtils';
 import { LanguageModelManager } from './utils/languageModelManager';
 import { buildTranslationPrompt, paramsPreserved, sanitizeTranslation } from './utils/translationLmUtils';
@@ -19,9 +19,6 @@ import {
   sortObject,
   splitParamNames
 } from './utils/translationUtils';
-
-/** Glob for folders never worth scanning, kept out of the file search for speed. */
-const SCAN_EXCLUDE = '**/{node_modules,dist,.angular,out,coverage}/**';
 
 /** Number of template files read concurrently during a workspace scan. */
 const SCAN_CONCURRENCY = 24;
@@ -363,7 +360,7 @@ export class Commands {
     progress: vscode.Progress<{ message?: string; increment?: number }>,
     token: vscode.CancellationToken
   ): Promise<{ files: { path: string; findings: LocatedHardcodedString[] }[]; findingCount: number; scanned: number } | undefined> {
-    const uris = await vscode.workspace.findFiles('**/*.html', SCAN_EXCLUDE, undefined, token);
+    const uris = await vscode.workspace.findFiles('**/*.html', HTML_SCAN_EXCLUDE, undefined, token);
     if (token.isCancellationRequested) {
       return undefined;
     }

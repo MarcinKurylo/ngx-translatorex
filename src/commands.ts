@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
+import { TextDecoder } from 'util';
 import { ExtensionCommands, EXTENSION_IDENTIFIER, INLINE_IGNORE_MARKER } from './const';
+import { LocatedHardcodedString, locateHardcodedStrings } from './utils/hardcodedStringUtils';
 import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
@@ -15,6 +17,12 @@ import {
   sortObject,
   splitParamNames
 } from './utils/translationUtils';
+
+/** Glob for folders never worth scanning, kept out of the file search for speed. */
+const SCAN_EXCLUDE = '**/{node_modules,dist,.angular,out,coverage}/**';
+
+/** Number of template files read concurrently during a workspace scan. */
+const SCAN_CONCURRENCY = 24;
 
 export class Commands {
 
@@ -305,6 +313,106 @@ export class Commands {
       });
       await vscode.window.showTextDocument(doc, { preview: false });
     });
+  }
+
+  /**
+   * Registers the command that scans every HTML template in the workspace for
+   * hard-coded strings and opens a Markdown report grouped by file. Runs under a
+   * cancellable progress notification and reads files with a bounded-concurrency
+   * pool via the workspace file system (no editor documents are opened), so it
+   * stays responsive on large projects. Independent of the live opt-in setting.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerShowHardcodedStringsReport(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.SHOW_HARDCODED_STRINGS_REPORT}`, async () => {
+      const options = {
+        minLength: ExtensionConfigManager.getNumberConfigValue('hardcodedStringsMinLength', 2),
+        ignore: ExtensionConfigManager.getArrayConfigValue('hardcodedStringsIgnore')
+      };
+      const scan = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Scanning templates for hard-coded strings…', cancellable: true },
+        (progress, token) => Commands.scanWorkspaceForHardcodedStrings(options, progress, token)
+      );
+      if (!scan) {
+        return;
+      }
+      if (!scan.files.length) {
+        return NotificationManager.showInfoMessage(`No hard-coded strings found in ${scan.scanned} template(s)`);
+      }
+      const doc = await vscode.workspace.openTextDocument({
+        content: Commands.renderHardcodedReport(scan),
+        language: 'markdown'
+      });
+      await vscode.window.showTextDocument(doc, { preview: false });
+    });
+  }
+
+  /**
+   * Reads every HTML template in the workspace with a bounded-concurrency pool
+   * and collects its hard-coded-string findings, reporting progress and honouring
+   * cancellation. Unreadable files are skipped rather than aborting the scan.
+   *
+   * @returns The per-file findings and the number of templates scanned, or
+   * `undefined` when the user cancelled.
+   */
+  private static async scanWorkspaceForHardcodedStrings(
+    options: { minLength: number; ignore: string[] },
+    progress: vscode.Progress<{ message?: string; increment?: number }>,
+    token: vscode.CancellationToken
+  ): Promise<{ files: { path: string; findings: LocatedHardcodedString[] }[]; findingCount: number; scanned: number } | undefined> {
+    const uris = await vscode.workspace.findFiles('**/*.html', SCAN_EXCLUDE, undefined, token);
+    if (token.isCancellationRequested) {
+      return undefined;
+    }
+    const decoder = new TextDecoder();
+    const files: { path: string; findings: LocatedHardcodedString[] }[] = [];
+    let findingCount = 0;
+    let next = 0;
+    let done = 0;
+    const worker = async () => {
+      while (next < uris.length && !token.isCancellationRequested) {
+        const uri = uris[next++];
+        try {
+          const findings = locateHardcodedStrings(decoder.decode(await vscode.workspace.fs.readFile(uri)), options);
+          if (findings.length) {
+            files.push({ path: vscode.workspace.asRelativePath(uri), findings });
+            findingCount += findings.length;
+          }
+        } catch {
+          // Unreadable or binary file — skip it.
+        }
+        progress.report({ increment: (100 / uris.length), message: `${++done}/${uris.length} files` });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(SCAN_CONCURRENCY, uris.length) }, worker));
+    if (token.isCancellationRequested) {
+      return undefined;
+    }
+    files.sort((a, b) => a.path.localeCompare(b.path));
+    return { files, findingCount, scanned: uris.length };
+  }
+
+  /** Renders the workspace hard-coded-strings scan as a Markdown document. */
+  private static renderHardcodedReport(
+    scan: { files: { path: string; findings: LocatedHardcodedString[] }[]; findingCount: number; scanned: number }
+  ): string {
+    const lines: string[] = [
+      '# Hard-coded strings report',
+      '',
+      `Scanned ${scan.scanned} template(s) — ${scan.findingCount} finding(s) across ${scan.files.length} file(s).`,
+      ''
+    ];
+    for (const file of scan.files) {
+      lines.push(`## ${file.path} (${file.findings.length})`, '');
+      for (const finding of file.findings) {
+        const text = finding.text.replace(/\s+/g, ' ').trim();
+        const preview = text.length > 100 ? `${text.slice(0, 99)}…` : text;
+        lines.push(`- L${finding.line}: \`${preview}\``);
+      }
+      lines.push('');
+    }
+    return lines.join('\n');
   }
 
   /** Renders the per-language translation report as a Markdown document. */

@@ -68,6 +68,10 @@
 			{
 				"command": "ngx-translatorex.deleteTranslationKey",
 				"title": "ngx-translatorex: Delete i18n key across all languages"
+			},
+			{
+				"command": "ngx-translatorex.showHardcodedStringsReport",
+				"title": "ngx-translatorex: Scan workspace for hard-coded strings"
 			}
 		],
 		"keybindings": [

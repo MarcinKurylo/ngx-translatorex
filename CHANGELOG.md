@@ -14,6 +14,12 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
   tokens (URLs, paths, `snake_case`/`camelCase`/dotted identifiers) are skipped.
   Ignore via the `hardcodedStringsIgnore` list (supports `*` wildcards) or an
   inline `<!-- i18n-ignore -->` marker.
+- Workspace hard-coded strings scan: the **Scan workspace for hard-coded
+  strings** command scans every HTML template (excluding `node_modules`, `dist`,
+  `.angular`, `out`, `coverage`) and opens a Markdown report grouped by file with
+  line numbers. Runs under a cancellable progress notification with
+  bounded-concurrency file reads, so it stays responsive on large projects, and
+  works regardless of the live opt-in setting.
 
 ## [0.3.0]
 

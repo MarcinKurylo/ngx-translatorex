@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { findHardcodedStrings } from '../../utils/hardcodedStringUtils';
+import { findHardcodedStrings, locateHardcodedStrings } from '../../utils/hardcodedStringUtils';
 
 const texts = (html: string, options?: Parameters<typeof findHardcodedStrings>[1]) =>
   findHardcodedStrings(html, options).map((c) => c.text);
@@ -148,5 +148,24 @@ describe('findHardcodedStrings', () => {
     it('is case-sensitive for exact ignore patterns', () => {
       assert.deepStrictEqual(texts('<p>OK</p>', { ignore: ['ok'] }), ['OK']);
     });
+  });
+});
+
+describe('locateHardcodedStrings', () => {
+  it('tags each candidate with its one-based line number', () => {
+    const html = '<div>\n  <h1>Title</h1>\n\n  <p>Body</p>\n</div>';
+    const located = locateHardcodedStrings(html);
+    assert.deepStrictEqual(located.map((c) => [c.text, c.line]), [['Title', 2], ['Body', 4]]);
+  });
+
+  it('counts the line of a candidate inside a multi-line node from its start', () => {
+    const html = '<a>x</a>\n<a>x</a>\n<p>Real text</p>';
+    const [located] = locateHardcodedStrings(html);
+    assert.strictEqual(located.text, 'Real text');
+    assert.strictEqual(located.line, 3);
+  });
+
+  it('returns an empty array when there are no findings', () => {
+    assert.deepStrictEqual(locateHardcodedStrings('<p>{{ x }}</p>'), []);
   });
 });

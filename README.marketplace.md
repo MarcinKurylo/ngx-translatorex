@@ -14,6 +14,7 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 - **Go-to-definition** — press `F12` or `Ctrl`/`Cmd`+Click on a key used with the `translate` pipe or `TranslateService` to jump straight to that key's line in your main language JSON.
 - **Rename / delete keys** — rename or delete a key (a single leaf or a whole namespace) and the change propagates across every language file, each keeping its own value.
 - **Translation report** — run **Show translation report** for a per-language summary of keys that are missing or still hold the placeholder, so you always know what's left to translate.
+- **Hard-coded string detection (experimental, opt-in)** — flags untranslated user-facing text and `title`/`placeholder`/`aria-label`/`alt`/`matTooltip` values in templates as hints, with **Extract to i18n key** and **Ignore this string** quick fixes. Run **Scan workspace for hard-coded strings** for a project-wide report grouped by file. Enable with `ngx-translatorex.detectHardcodedStrings`.
 - **Automatic refresh** — the extension watches your i18n file and reloads translations when it changes outside the editor (a manual edit, a `git pull`, or a branch switch), so tooltips and completions stay accurate.
 - **One-click JSON sort** — alphabetically sort your translation file, recursively.
 
@@ -47,6 +48,9 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.placeholder` | Placeholder written into other language files for a new key until it's translated (also flags untranslated keys in the report). | `[TODO] translation not implemented` |
 | `ngx-translatorex.diagnostics` | Underline keys that are missing from the i18n files as warnings. Turn off in projects with many dynamic keys. | `true` |
 | `ngx-translatorex.syncLanguages` | When adding a key, also write a placeholder into every other language file so the key exists everywhere. | `true` |
+| `ngx-translatorex.detectHardcodedStrings` | Experimental, opt-in: flag hard-coded strings in HTML templates as hints. | `false` |
+| `ngx-translatorex.hardcodedStringsMinLength` | Minimum length of a hard-coded string to flag. | `2` |
+| `ngx-translatorex.hardcodedStringsIgnore` | Strings to never flag (supports `*` wildcards). | `[]` |
 
 ## Commands
 
@@ -60,6 +64,7 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.showTranslationReport` | Show a per-language report of missing and untranslated keys. |
 | `ngx-translatorex.renameTranslationKey` | Rename a key across all language files. |
 | `ngx-translatorex.deleteTranslationKey` | Delete a key across all language files. |
+| `ngx-translatorex.showHardcodedStringsReport` | Scan every HTML template in the workspace for hard-coded strings. |
 
 ## Requirements
 

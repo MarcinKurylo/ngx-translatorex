@@ -161,3 +161,35 @@ export function findHardcodedStrings(
 
   return candidates.sort((a, b) => a.index - b.index);
 }
+
+/** A hard-coded string candidate with its one-based line number in the source. */
+export interface LocatedHardcodedString extends HardcodedStringCandidate {
+  /** One-based line number of the candidate. */
+  line: number;
+}
+
+/**
+ * Like {@link findHardcodedStrings}, but also tags each candidate with its
+ * one-based line number. Line numbers are computed in a single pass over the
+ * text (candidates are already sorted by offset), so a whole-workspace scan
+ * stays linear per file even when a template has many findings.
+ */
+export function locateHardcodedStrings(
+  html: string,
+  options: HardcodedStringOptions = {}
+): LocatedHardcodedString[] {
+  const candidates = findHardcodedStrings(html, options);
+  const located: LocatedHardcodedString[] = [];
+  let line = 1;
+  let position = 0;
+  for (const candidate of candidates) {
+    while (position < candidate.index) {
+      if (html.charCodeAt(position) === 10 /* \n */) {
+        line++;
+      }
+      position++;
+    }
+    located.push({ ...candidate, line });
+  }
+  return located;
+}

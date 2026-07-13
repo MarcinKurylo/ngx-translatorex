@@ -29,6 +29,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Rename or delete a key with propagation across every language file.
 - Configurable settings: placeholder text, diagnostics on/off, and multi-language sync on/off.
 - Experimental, opt-in hard-coded-string detection in HTML templates (Information hints) with extract/ignore quick fixes.
+- Workspace-wide hard-coded-strings scan (cancellable, bounded-concurrency) that reports every untranslated template string grouped by file.
 - Per-language translation report (missing and untranslated keys across the i18n folder).
 - Automatic cache refresh via a file watcher when the i18n file changes outside the editor.
 - One-click recursive JSON sort.

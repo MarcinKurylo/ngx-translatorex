@@ -151,6 +151,87 @@ export class Commands {
   }
 
   /**
+   * Registers the command that renames a translation key across every language
+   * file. The key to rename can be passed in (e.g. from a code action) or picked
+   * from the existing keys; the new key is validated and must not already exist.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerRenameTranslationKey(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.RENAME_TRANSLATION_KEY}`, async (key?: string) => {
+      const oldKey = key ?? await Commands.pickExistingKey('Rename i18n key');
+      if (!oldKey) {
+        return;
+      }
+      const newKey = await vscode.window.showInputBox({
+        title: `Rename '${oldKey}'`,
+        prompt: "New key (can be nested, e.g. 'key1.key2')",
+        value: oldKey
+      });
+      if (newKey === undefined || newKey === oldKey) {
+        return;
+      }
+      if (!isKeyValid(newKey, 'key')) {
+        return NotificationManager.showErrorMessage('Invalid key');
+      }
+      if (FileSystemManager.cache[newKey] !== undefined) {
+        return NotificationManager.showErrorMessage(`i18n key '${newKey}' already exists`);
+      }
+      const { saved, changed } = await FileSystemManager.renameTranslation(oldKey, newKey);
+      if (!saved) {
+        return;
+      }
+      await FileSystemManager.refreshCache();
+      NotificationManager.showInfoMessage(`Renamed '${oldKey}' to '${newKey}' in ${changed} file(s)`);
+    });
+  }
+
+  /**
+   * Registers the command that deletes a translation key across every language
+   * file. The key can be passed in (e.g. from a code action) or picked from the
+   * existing keys, and deletion is confirmed with a modal dialog.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerDeleteTranslationKey(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.DELETE_TRANSLATION_KEY}`, async (key?: string) => {
+      const targetKey = key ?? await Commands.pickExistingKey('Delete i18n key');
+      if (!targetKey) {
+        return;
+      }
+      const confirm = await vscode.window.showWarningMessage(
+        `Delete i18n key '${targetKey}' from all language files?`,
+        { modal: true },
+        'Delete'
+      );
+      if (confirm !== 'Delete') {
+        return;
+      }
+      const { saved, changed } = await FileSystemManager.deleteTranslation(targetKey);
+      if (!saved) {
+        return;
+      }
+      await FileSystemManager.refreshCache();
+      NotificationManager.showInfoMessage(`Deleted '${targetKey}' from ${changed} file(s)`);
+    });
+  }
+
+  /**
+   * Prompts the user to pick one of the existing translation keys from the cache.
+   *
+   * @param title The quick-pick title.
+   * @returns The chosen key, or `undefined` when dismissed or no keys exist.
+   */
+  private static async pickExistingKey(title: string): Promise<string | undefined> {
+    const keys = Object.keys(FileSystemManager.cache);
+    if (!keys.length) {
+      NotificationManager.showErrorMessage('No i18n keys found');
+      return undefined;
+    }
+    return vscode.window.showQuickPick(keys.sort(), { title, placeHolder: 'Select a key' });
+  }
+
+  /**
    * Registers the command that alphabetically sorts the main i18n JSON file
    * (recursively) and writes it back.
    *

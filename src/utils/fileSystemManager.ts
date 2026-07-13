@@ -3,7 +3,7 @@ import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
 import { MISSING_TRANSLATION_PLACEHOLDER } from '../const';
-import { TranslationTree, flattenObject, setKey } from './translationUtils';
+import { TranslationTree, deleteKey, flattenObject, renameKey, setKey } from './translationUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
@@ -138,6 +138,62 @@ export class FileSystemManager {
     } catch (e) {
       NotificationManager.showErrorMessage(`Save json failed`);
       return { saved: false, overwritten: false };
+    }
+  }
+
+  /**
+   * Renames a key in every language file in the i18n folder, moving each file's
+   * own value (or subtree) to the new key. Files that do not contain the key are
+   * left untouched.
+   *
+   * @param oldKey The existing dotted key to rename.
+   * @param newKey The new dotted key.
+   * @returns `saved` — whether all writes succeeded; `changed` — how many files
+   * were actually modified.
+   */
+  public static async renameTranslation(oldKey: string, newKey: string): Promise<{ saved: boolean; changed: number }> {
+    return FileSystemManager.mutateAllLanguages((tree) => renameKey(tree, oldKey, newKey));
+  }
+
+  /**
+   * Deletes a key from every language file in the i18n folder, pruning any
+   * subtrees left empty by the removal. Files that do not contain the key are
+   * left untouched.
+   *
+   * @param key The dotted key to delete.
+   * @returns `saved` — whether all writes succeeded; `changed` — how many files
+   * were actually modified.
+   */
+  public static async deleteTranslation(key: string): Promise<{ saved: boolean; changed: number }> {
+    return FileSystemManager.mutateAllLanguages((tree) => deleteKey(tree, key));
+  }
+
+  /**
+   * Applies a mutation to every language file in the i18n folder, writing back
+   * only the files the mutation actually changed.
+   *
+   * @param mutate A function that mutates a tree in place and returns whether it
+   * changed anything.
+   * @returns `saved` — whether all writes succeeded; `changed` — how many files
+   * were modified.
+   */
+  private static async mutateAllLanguages(
+    mutate: (tree: TranslationTree) => boolean
+  ): Promise<{ saved: boolean; changed: number }> {
+    try {
+      const uris = await FileSystemManager.getLanguageUris();
+      let changed = 0;
+      for (const uri of uris) {
+        const tree = await FileSystemManager.readJson(uri);
+        if (mutate(tree)) {
+          await FileSystemManager.writeJson(uri, tree);
+          changed++;
+        }
+      }
+      return { saved: true, changed };
+    } catch (e) {
+      NotificationManager.showErrorMessage('Save json failed');
+      return { saved: false, changed: 0 };
     }
   }
 

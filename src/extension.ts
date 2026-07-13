@@ -3,6 +3,7 @@ import { Commands } from './commands';
 import { CompletionProviders } from './completionProviders';
 import { HoverProviders } from './hoverProviders';
 import { DiagnosticsProvider } from './diagnosticsProvider';
+import { DefinitionProviders } from './definitionProviders';
 import { EXTENSION_IDENTIFIER } from './const';
 import { FileSystemManager } from './utils/fileSystemManager';
 
@@ -34,11 +35,17 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		Commands.registerSortJson(),
 		Commands.registerSetMode(),
 		Commands.registerCreateTranslationKey(),
-		Commands.registerShowTranslationReport()
+		Commands.registerShowTranslationReport(),
+		Commands.registerRenameTranslationKey(),
+		Commands.registerDeleteTranslationKey()
 	];
 
 	const hoverProviders = [
 		HoverProviders.registerHtmlHoverProvider()
+	];
+
+	const definitionProviders = [
+		DefinitionProviders.registerDefinitionProvider()
 	];
 
 	const completionProviders = [
@@ -48,6 +55,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 	context.subscriptions.push(
 		...commands,
 		...hoverProviders,
+		...definitionProviders,
 		...completionProviders,
 		...diagnostics,
 		configListener,

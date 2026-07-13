@@ -59,6 +59,139 @@ export function setKey(
 }
 
 /**
+ * Returns the node stored under a dotted key — either a string leaf or a whole
+ * subtree — or `undefined` when the key does not exist.
+ */
+export function getNode(tree: TranslationTree, key: string): string | TranslationTree | undefined {
+  const [head, ...rest] = key.split('.');
+  const child = tree[head];
+  if (rest.length === 0) {
+    return child;
+  }
+  return isSubtree(child) ? getNode(child, rest.join('.')) : undefined;
+}
+
+/**
+ * Stores a node (a string leaf or an entire subtree) under a dotted key,
+ * creating any missing intermediate subtrees. Mutates `tree` in place and
+ * overwrites whatever is currently at the key. Used by rename to move a value
+ * without discarding nested content.
+ */
+export function setNode(tree: TranslationTree, key: string, node: string | TranslationTree): void {
+  const [head, ...rest] = key.split('.');
+  if (rest.length === 0) {
+    tree[head] = node;
+    return;
+  }
+  const child = tree[head];
+  const subtree: TranslationTree = isSubtree(child) ? child : {};
+  tree[head] = subtree;
+  setNode(subtree, rest.join('.'), node);
+}
+
+/**
+ * Removes the node at a dotted key, pruning any intermediate subtrees that are
+ * left empty by the removal. Mutates `tree` in place.
+ *
+ * @returns `true` when a node was removed, `false` when the key did not exist.
+ */
+export function deleteKey(tree: TranslationTree, key: string): boolean {
+  const [head, ...rest] = key.split('.');
+  if (!(head in tree)) {
+    return false;
+  }
+  if (rest.length === 0) {
+    delete tree[head];
+    return true;
+  }
+  const child = tree[head];
+  if (!isSubtree(child)) {
+    return false;
+  }
+  const deleted = deleteKey(child, rest.join('.'));
+  if (deleted && Object.keys(child).length === 0) {
+    delete tree[head];
+  }
+  return deleted;
+}
+
+/**
+ * Renames a dotted key, moving whatever node it holds (leaf or subtree) to the
+ * new key and pruning any subtrees emptied by the move. Mutates `tree` in place.
+ *
+ * @returns `true` when the source key existed and was moved, `false` otherwise.
+ */
+export function renameKey(tree: TranslationTree, oldKey: string, newKey: string): boolean {
+  if (oldKey === newKey) {
+    return false;
+  }
+  const node = getNode(tree, oldKey);
+  if (node === undefined) {
+    return false;
+  }
+  deleteKey(tree, oldKey);
+  setNode(tree, newKey, node);
+  return true;
+}
+
+/**
+ * Locates a dotted key within raw JSON source text and returns the character
+ * offset of the key name (just after its opening quote), so an editor can jump
+ * to and select it. Walks the JSON structurally — tracking object nesting and
+ * skipping string values — so a value that happens to equal a key name is not
+ * mistaken for one. Assumes object/leaf translation JSON (no arrays).
+ *
+ * @returns The offset of the matching key name, or `undefined` when not found.
+ */
+export function findKeyOffsetInJson(text: string, dottedKey: string): number | undefined {
+  const path: string[] = [];
+  let pendingKey: string | undefined;
+  let pendingKeyOffset = -1;
+  let awaitingValue = false;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '"') {
+      const start = i + 1;
+      let j = start;
+      while (j < text.length && text[j] !== '"') {
+        j += text[j] === '\\' ? 2 : 1;
+      }
+      if (awaitingValue) {
+        awaitingValue = false;
+        pendingKey = undefined;
+      } else {
+        pendingKey = text.slice(start, j);
+        pendingKeyOffset = start;
+      }
+      i = j + 1;
+      continue;
+    }
+    if (ch === ':') {
+      if (pendingKey !== undefined && [...path, pendingKey].join('.') === dottedKey) {
+        return pendingKeyOffset;
+      }
+      awaitingValue = true;
+    } else if (ch === '{') {
+      if (pendingKey !== undefined) {
+        path.push(pendingKey);
+      }
+      pendingKey = undefined;
+      awaitingValue = false;
+    } else if (ch === '}') {
+      path.pop();
+      pendingKey = undefined;
+      awaitingValue = false;
+    } else if (ch === ',') {
+      pendingKey = undefined;
+      awaitingValue = false;
+    }
+    i++;
+  }
+  return undefined;
+}
+
+/**
  * Flattens a nested tree into a single-level map keyed by dotted paths
  * (e.g. `{ a: { b: 'x' } }` → `{ 'a.b': 'x' }`). Non-subtree values (strings,
  * and any null/array values present in raw JSON) are treated as leaves.

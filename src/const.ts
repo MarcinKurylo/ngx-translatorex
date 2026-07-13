@@ -1,6 +1,6 @@
 export const EXTENSION_IDENTIFIER = 'ngx-translatorex';
 export type ConfigValue = 'language' | 'mode' | 'path' | 'placeholder';
-export type BooleanConfigValue = 'diagnostics' | 'syncLanguages' | 'detectHardcodedStrings';
+export type BooleanConfigValue = 'diagnostics' | 'syncLanguages' | 'detectHardcodedStrings' | 'autoTranslateOnCreate';
 export type NumberConfigValue = 'hardcodedStringsMinLength';
 export type ArrayConfigValue = 'hardcodedStringsIgnore';
 

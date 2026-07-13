@@ -2,6 +2,14 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [Unreleased]
+
+- Auto-translate on key creation (opt-in `ngx-translatorex.autoTranslateOnCreate`):
+  when you add a key (extraction or the "Create i18n key" quick fix), it's
+  immediately translated into every other language with your language model
+  instead of leaving `[TODO]` placeholders — `{{ params }}` preserved, bad
+  translations skipped. Off by default; needs a language model provider.
+
 ## [0.5.1]
 
 - Auto-translate now fills **missing** keys, not just placeholders: a hand-made

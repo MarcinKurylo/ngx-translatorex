@@ -54,6 +54,7 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.detectHardcodedStrings` | Experimental, opt-in: flag hard-coded strings in HTML templates as hints. | `false` |
 | `ngx-translatorex.hardcodedStringsMinLength` | Minimum length of a hard-coded string to flag. | `2` |
 | `ngx-translatorex.hardcodedStringsIgnore` | Strings to never flag (supports `*` wildcards). | `[]` |
+| `ngx-translatorex.autoTranslateOnCreate` | On adding a key, translate it into the other languages with your model instead of leaving placeholders. | `false` |
 
 ## Commands
 

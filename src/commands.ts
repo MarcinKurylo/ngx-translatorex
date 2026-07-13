@@ -13,6 +13,7 @@ import {
   Mode,
   buildTranslationReport,
   checkForParamsInSelection,
+  flattenObject,
   generateKey,
   isKeyValid,
   renameParams,
@@ -125,6 +126,7 @@ export class Commands {
       FileSystemManager.cache[key] = value;
       FileSystemManager.onCacheChanged?.();
       ExtensionUtils.insertSnippet(key, selection.languageId, selection.range, paramsMap);
+      await Commands.autoTranslateKey(key, value);
     });
   }
 
@@ -154,7 +156,50 @@ export class Commands {
       FileSystemManager.cache[key] = value;
       FileSystemManager.onCacheChanged?.();
       NotificationManager.showInfoMessage(`i18n key '${key}' created`);
+      await Commands.autoTranslateKey(key, value);
     });
+  }
+
+  /**
+   * When `autoTranslateOnCreate` is enabled and a language model is available,
+   * translates a just-added key into every other language (those still missing it
+   * or holding the placeholder), keeping `{{ params }}` intact and skipping any
+   * translation that drops them. A no-op when disabled or no model is available,
+   * so it can be awaited unconditionally after adding a key.
+   */
+  private static async autoTranslateKey(key: string, source: string): Promise<void> {
+    if (!ExtensionConfigManager.getBooleanConfigValue('autoTranslateOnCreate', false) || !LanguageModelManager.isAvailable()) {
+      return;
+    }
+    const model = await LanguageModelManager.selectModel();
+    if (!model) {
+      return;
+    }
+    const placeholder = ExtensionConfigManager.getPlaceholder();
+    const mainLanguage = ExtensionConfigManager.getConfigValue('language') ?? 'en';
+    const token = new vscode.CancellationTokenSource().token;
+    const updates: { language: string; key: string; value: string }[] = [];
+    for (const { language, tree } of await FileSystemManager.getAllLanguageTranslations()) {
+      if (language === mainLanguage) {
+        continue;
+      }
+      const current = flattenObject(tree)[key];
+      if (current !== undefined && current !== placeholder) {
+        continue;
+      }
+      try {
+        const text = sanitizeTranslation(await LanguageModelManager.complete(model, buildTranslationPrompt(source, language), token));
+        if (text && paramsPreserved(source, text)) {
+          updates.push({ language, key, value: text });
+        }
+      } catch {
+        // Model refused or failed for this language — leave its placeholder.
+      }
+    }
+    if (updates.length) {
+      await FileSystemManager.setTranslations(updates);
+      NotificationManager.showInfoMessage(`Auto-translated '${key}' into ${updates.length} language(s)`);
+    }
   }
 
   /**

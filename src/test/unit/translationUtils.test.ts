@@ -245,6 +245,10 @@ describe('generateKey', () => {
     assert.strictEqual(generateKey('s', 'a   b'), 's.a_b');
   });
 
+  it('returns a bare slug (no leading dot) for an empty scope', () => {
+    assert.strictEqual(generateKey('', 'Welcome home'), 'welcome_home');
+  });
+
   it('strips the trailing dot from the scope', () => {
     assert.strictEqual(generateKey('key.', 'ignored value'), 'key');
   });

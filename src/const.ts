@@ -30,5 +30,6 @@ export enum ExtensionCommands  {
   EXTRACT_HARDCODED_STRING = 'extractHardcodedString',
   IGNORE_HARDCODED_STRING = 'ignoreHardcodedString',
   SHOW_HARDCODED_STRINGS_REPORT = 'showHardcodedStringsReport',
-  TRANSLATE_PLACEHOLDERS = 'translatePlaceholders'
+  TRANSLATE_PLACEHOLDERS = 'translatePlaceholders',
+  EXTRACT_TEMPLATE_STRINGS = 'extractTemplateStrings'
 }

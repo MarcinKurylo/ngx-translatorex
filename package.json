@@ -84,6 +84,11 @@
 			{
 				"command": "ngx-translatorex.translatePlaceholders",
 				"title": "ngx-translatorex: Auto-translate missing placeholders (AI)"
+			},
+			{
+				"command": "ngx-translatorex.extractTemplateStrings",
+				"title": "ngx-translatorex: Extract all hard-coded strings in this template",
+				"enablement": "editorLangId == html"
 			}
 		],
 		"keybindings": [

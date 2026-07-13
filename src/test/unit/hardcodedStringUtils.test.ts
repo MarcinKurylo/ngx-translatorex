@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { findHardcodedStrings, locateHardcodedStrings } from '../../utils/hardcodedStringUtils';
+import { findHardcodedStrings, locateHardcodedStrings, planBulkExtraction } from '../../utils/hardcodedStringUtils';
 
 const texts = (html: string, options?: Parameters<typeof findHardcodedStrings>[1]) =>
   findHardcodedStrings(html, options).map((c) => c.text);
@@ -167,5 +167,47 @@ describe('locateHardcodedStrings', () => {
 
   it('returns an empty array when there are no findings', () => {
     assert.deepStrictEqual(locateHardcodedStrings('<p>{{ x }}</p>'), []);
+  });
+});
+
+describe('planBulkExtraction', () => {
+  const find = (html: string) => findHardcodedStrings(html);
+
+  it('generates scoped keys and translate snippets', () => {
+    const plan = planBulkExtraction(find('<h1>Welcome home</h1>'), 'home');
+    assert.deepStrictEqual(plan, [{
+      index: 4,
+      length: 12,
+      text: 'Welcome home',
+      key: 'home.welcome_home',
+      snippet: `{{ 'home.welcome_home' | translate }}`
+    }]);
+  });
+
+  it('produces top-level keys for an empty scope', () => {
+    const plan = planBulkExtraction(find('<button>Save</button>'), '');
+    assert.strictEqual(plan[0].key, 'save');
+    assert.strictEqual(plan[0].snippet, `{{ 'save' | translate }}`);
+  });
+
+  it('reuses the same key for identical text', () => {
+    const plan = planBulkExtraction(find('<a>Save</a><b>Save</b>'), '');
+    assert.deepStrictEqual(plan.map((p) => p.key), ['save', 'save']);
+  });
+
+  it('disambiguates different text that slugifies to the same key', () => {
+    const plan = planBulkExtraction(find('<a>Save</a><b>Save!</b>'), '');
+    assert.deepStrictEqual(plan.map((p) => [p.text, p.key]), [['Save', 'save'], ['Save!', 'save_2']]);
+  });
+
+  it('skips candidates containing an interpolation', () => {
+    const plan = planBulkExtraction(find('<p>Hello {{ name }}</p><p>Plain</p>'), 's');
+    assert.deepStrictEqual(plan.map((p) => p.text), ['Plain']);
+  });
+
+  it('keeps candidates in source order', () => {
+    const plan = planBulkExtraction(find('<h1>First</h1><p>Second</p>'), '');
+    assert.deepStrictEqual(plan.map((p) => p.key), ['first', 'second']);
+    assert.ok(plan[0].index < plan[1].index);
   });
 });

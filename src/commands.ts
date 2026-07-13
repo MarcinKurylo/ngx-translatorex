@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
 import { ExtensionCommands, EXTENSION_IDENTIFIER, INLINE_IGNORE_MARKER } from './const';
-import { LocatedHardcodedString, locateHardcodedStrings } from './utils/hardcodedStringUtils';
+import { LocatedHardcodedString, findHardcodedStrings, locateHardcodedStrings, planBulkExtraction } from './utils/hardcodedStringUtils';
 import { LanguageModelManager } from './utils/languageModelManager';
 import { buildTranslationPrompt, paramsPreserved, sanitizeTranslation } from './utils/translationLmUtils';
 import { NotificationManager } from './utils/notificationManager';
@@ -393,6 +393,88 @@ export class Commands {
     }
     files.sort((a, b) => a.path.localeCompare(b.path));
     return { files, findingCount, scanned: uris.length };
+  }
+
+  /**
+   * Registers the command that bulk-extracts every hard-coded string in the
+   * active HTML template into i18n keys under a chosen scope (empty scope →
+   * top-level keys), then offers to auto-translate the new placeholders. Keys are
+   * slugified from the text with collision-safe disambiguation; the template is
+   * rewritten in a single undoable edit. Interpolated text is skipped for now.
+   * The first pipeline step of the scan → extract → translate flow.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerExtractTemplateStrings(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.EXTRACT_TEMPLATE_STRINGS}`, async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== 'html') {
+        return NotificationManager.showErrorMessage('Open an HTML template to extract from');
+      }
+      const document = editor.document;
+      const candidates = findHardcodedStrings(document.getText(), {
+        minLength: ExtensionConfigManager.getNumberConfigValue('hardcodedStringsMinLength', 2),
+        ignore: ExtensionConfigManager.getArrayConfigValue('hardcodedStringsIgnore')
+      });
+      if (!candidates.length) {
+        return NotificationManager.showInfoMessage('No hard-coded strings found in this template');
+      }
+      const defaultScope = document.uri.path.split('/').pop()!.replace(/\.component\.html$|\.html$/, '');
+      const scope = await vscode.window.showInputBox({
+        title: `Extract ${candidates.length} hard-coded string(s)`,
+        prompt: 'Scope prefix for the generated keys (leave empty for top-level keys)',
+        value: defaultScope
+      });
+      if (scope === undefined) {
+        return;
+      }
+      const plan = planBulkExtraction(candidates, scope.trim());
+      if (!plan.length) {
+        return NotificationManager.showInfoMessage('Nothing to extract (only interpolated text found)');
+      }
+      const uniqueKeys = new Map<string, string>();
+      for (const item of plan) {
+        if (!uniqueKeys.has(item.key)) {
+          uniqueKeys.set(item.key, item.text);
+        }
+      }
+      const confirm = await vscode.window.showWarningMessage(
+        `Extract ${plan.length} string(s) into ${uniqueKeys.size} i18n key(s)? This edits the template and your i18n files.`,
+        { modal: true },
+        'Extract'
+      );
+      if (confirm !== 'Extract') {
+        return;
+      }
+      for (const [key, value] of uniqueKeys) {
+        const { saved } = await FileSystemManager.addTranslation(key, value);
+        if (!saved) {
+          return;
+        }
+        FileSystemManager.cache[key] = value;
+      }
+      FileSystemManager.onCacheChanged?.();
+      const edit = new vscode.WorkspaceEdit();
+      for (const item of [...plan].sort((a, b) => b.index - a.index)) {
+        const range = new vscode.Range(document.positionAt(item.index), document.positionAt(item.index + item.length));
+        edit.replace(document.uri, range, item.snippet);
+      }
+      await vscode.workspace.applyEdit(edit);
+      const translateCommand = `${EXTENSION_IDENTIFIER}.${ExtensionCommands.TRANSLATE_PLACEHOLDERS}`;
+      const available = (await vscode.commands.getCommands(true)).includes(translateCommand);
+      if (available) {
+        const choice = await vscode.window.showInformationMessage(
+          `Extracted ${plan.length} string(s) into ${uniqueKeys.size} key(s). Translate the new placeholders now?`,
+          'Translate',
+          'Later'
+        );
+        if (choice === 'Translate') {
+          await vscode.commands.executeCommand(translateCommand);
+        }
+      } else {
+        NotificationManager.showInfoMessage(`Extracted ${plan.length} string(s) into ${uniqueKeys.size} key(s)`);
+      }
+    });
   }
 
   /**

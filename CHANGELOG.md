@@ -2,7 +2,7 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
-## [Unreleased]
+## [0.3.0]
 
 - Go-to-definition: F12 or Ctrl/Cmd+Click on a key used with the `translate`
   pipe (HTML) or `TranslateService` (TypeScript) jumps to that key's line in the
@@ -15,6 +15,9 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
   `diagnostics` (toggle missing-key warnings off in projects with many dynamic
   keys), and `syncLanguages` (toggle writing placeholders into other language
   files when adding a key).
+- Fix the extension icon (the serif `t` now renders correctly) and replace the
+  retired Marketplace badges in the README. This is the first release to ship
+  the corrected icon.
 
 ## [0.0.1]
 

@@ -2,7 +2,7 @@
   "name": "ngx-translatorex",
 	"displayName": "ngx-translatorex",
 	"description": "Translate manager for ngx translate Angular library",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"publisher": "marcinex",
 	"license": "MIT",
 	"icon": "images/icon.png",

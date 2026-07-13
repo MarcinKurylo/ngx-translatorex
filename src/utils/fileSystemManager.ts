@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
-import { MISSING_TRANSLATION_PLACEHOLDER } from '../const';
 import { TranslationTree, deleteKey, flattenObject, renameKey, setKey } from './translationUtils';
 export class FileSystemManager {
 
@@ -106,10 +105,11 @@ export class FileSystemManager {
   }
 
   /**
-   * Writes a new key into every language file in the i18n folder: the real
-   * value goes into the main language file, while all other languages receive a
-   * placeholder so the key exists everywhere and untranslated languages stay
-   * visible. Existing values in secondary languages are never overwritten.
+   * Writes a new key into the i18n folder. The real value goes into the main
+   * language file; when multi-language sync is enabled, every other language
+   * also receives a placeholder so the key exists everywhere and untranslated
+   * languages stay visible. Existing values in secondary languages are never
+   * overwritten. When sync is disabled, only the main language file is touched.
    *
    * @param key The dotted translation key to add.
    * @param value The value for the main language.
@@ -120,13 +120,18 @@ export class FileSystemManager {
     try {
       const mainUri = await FileSystemManager.getUri();
       const uris = await FileSystemManager.getLanguageUris();
+      const sync = ExtensionConfigManager.getBooleanConfigValue('syncLanguages', true);
+      const placeholder = ExtensionConfigManager.getPlaceholder();
       let overwritten = false;
       for (const uri of uris) {
         const isMain = uri.toString() === mainUri.toString();
+        if (!isMain && !sync) {
+          continue;
+        }
         const tree = await FileSystemManager.readJson(uri);
         const result = isMain
           ? setKey(tree, key, value)
-          : setKey(tree, key, MISSING_TRANSLATION_PLACEHOLDER, { overwrite: false });
+          : setKey(tree, key, placeholder, { overwrite: false });
         if (isMain) {
           overwritten = result.overwritten;
         }

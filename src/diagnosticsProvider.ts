@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { EXTENSION_IDENTIFIER, ExtensionCommands } from './const';
 import { FileSystemManager } from './utils/fileSystemManager';
+import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { findTranslateKeys } from './utils/diagnosticsUtils';
 
 /** Document languages that are scanned for translation-key references. */
@@ -48,7 +49,8 @@ export class DiagnosticsProvider implements vscode.CodeActionProvider {
    * are absent from the cache. Non-supported languages are cleared.
    */
   private static refresh(document: vscode.TextDocument): void {
-    if (!DiagnosticsProvider.collection || !SUPPORTED_LANGUAGES.includes(document.languageId)) {
+    const enabled = ExtensionConfigManager.getBooleanConfigValue('diagnostics', true);
+    if (!DiagnosticsProvider.collection || !enabled || !SUPPORTED_LANGUAGES.includes(document.languageId)) {
       DiagnosticsProvider.collection?.delete(document.uri);
       return;
     }

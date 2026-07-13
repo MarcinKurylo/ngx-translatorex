@@ -11,7 +11,9 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 - **Inline translation tooltips** — hover a key in your templates to see its translated value.
 - **IntelliSense completions** — get autocomplete for existing translation keys as you type.
 - **Missing-key diagnostics** — keys used with the `translate` pipe or `TranslateService` (`.instant`/`.get`/`.stream`) that don't exist in your i18n file are underlined as warnings, with a **Create i18n key** quick fix that adds them across all languages.
-- **Translation report** — run **Show translation report** for a per-language summary of keys that are missing or still hold the `[TODO]` placeholder, so you always know what's left to translate.
+- **Go-to-definition** — press `F12` or `Ctrl`/`Cmd`+Click on a key used with the `translate` pipe or `TranslateService` to jump straight to that key's line in your main language JSON.
+- **Rename / delete keys** — rename or delete a key (a single leaf or a whole namespace) and the change propagates across every language file, each keeping its own value.
+- **Translation report** — run **Show translation report** for a per-language summary of keys that are missing or still hold the placeholder, so you always know what's left to translate.
 - **Automatic refresh** — the extension watches your i18n file and reloads translations when it changes outside the editor (a manual edit, a `git pull`, or a branch switch), so tooltips and completions stay accurate.
 - **One-click JSON sort** — alphabetically sort your translation file, recursively.
 
@@ -42,6 +44,9 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.mode` | Mode in which the extension works — `key` or `scope`. | `key` |
 | `ngx-translatorex.language` | Main i18n file to write to (e.g. `en`). | `en` |
 | `ngx-translatorex.path` | Full path or glob to the i18n folder. | `**/assets/i18n/` |
+| `ngx-translatorex.placeholder` | Placeholder written into other language files for a new key until it's translated (also flags untranslated keys in the report). | `[TODO] translation not implemented` |
+| `ngx-translatorex.diagnostics` | Underline keys that are missing from the i18n files as warnings. Turn off in projects with many dynamic keys. | `true` |
+| `ngx-translatorex.syncLanguages` | When adding a key, also write a placeholder into every other language file so the key exists everywhere. | `true` |
 
 ## Commands
 
@@ -53,6 +58,8 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.setMode` | Switch between key and scope mode. |
 | `ngx-translatorex.sortJson` | Alphabetically sort the i18n file. |
 | `ngx-translatorex.showTranslationReport` | Show a per-language report of missing and untranslated keys. |
+| `ngx-translatorex.renameTranslationKey` | Rename a key across all language files. |
+| `ngx-translatorex.deleteTranslationKey` | Delete a key across all language files. |
 
 ## Requirements
 

@@ -98,6 +98,24 @@
 						"default": "key",
 						"scope": "resource",
 						"description": "Mode: can be key or scope"
+					},
+					"ngx-translatorex.placeholder": {
+						"type": "string",
+						"default": "[TODO] translation not implemented",
+						"scope": "resource",
+						"description": "Placeholder written into secondary language files for a new key until it is translated. Also used to flag untranslated keys in the translation report."
+					},
+					"ngx-translatorex.diagnostics": {
+						"type": "boolean",
+						"default": true,
+						"scope": "resource",
+						"description": "Report keys used with the translate pipe (HTML) or TranslateService (TypeScript) that are missing from the i18n files as warnings."
+					},
+					"ngx-translatorex.syncLanguages": {
+						"type": "boolean",
+						"default": true,
+						"scope": "resource",
+						"description": "When adding a new key, also write a placeholder into every other language file so the key exists in all languages."
 					}
 				}
 			}

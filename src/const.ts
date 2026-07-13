@@ -1,5 +1,6 @@
 export const EXTENSION_IDENTIFIER = 'ngx-translatorex';
-export type ConfigValue = 'language' | 'mode' | 'path';
+export type ConfigValue = 'language' | 'mode' | 'path' | 'placeholder';
+export type BooleanConfigValue = 'diagnostics' | 'syncLanguages';
 
 /**
  * Placeholder written for a new key into every language file other than the

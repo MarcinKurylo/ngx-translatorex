@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ExtensionCommands, EXTENSION_IDENTIFIER, MISSING_TRANSLATION_PLACEHOLDER } from './const';
+import { ExtensionCommands, EXTENSION_IDENTIFIER } from './const';
 import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
@@ -257,7 +257,7 @@ export class Commands {
       if (!languages.length) {
         return NotificationManager.showErrorMessage('No i18n language files found');
       }
-      const reports = buildTranslationReport(languages, MISSING_TRANSLATION_PLACEHOLDER);
+      const reports = buildTranslationReport(languages, ExtensionConfigManager.getPlaceholder());
       const doc = await vscode.workspace.openTextDocument({
         content: Commands.renderReport(reports),
         language: 'markdown'

@@ -27,6 +27,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Missing-key diagnostics for `translate` pipe / `TranslateService` usages, with a "Create i18n key" quick fix.
 - Go-to-definition (F12 / Ctrl+Click) on a `translate` key jumps to its line in the main language JSON.
 - Rename or delete a key with propagation across every language file.
+- Configurable settings: placeholder text, diagnostics on/off, and multi-language sync on/off.
 - Per-language translation report (missing and untranslated keys across the i18n folder).
 - Automatic cache refresh via a file watcher when the i18n file changes outside the editor.
 - One-click recursive JSON sort.

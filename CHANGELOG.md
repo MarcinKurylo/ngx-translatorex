@@ -2,7 +2,7 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
-## [Unreleased]
+## [0.5.0]
 
 - Agent tools (VS Code Language Model Tools): the extension now exposes its core
   operations as tools an AI agent (e.g. Copilot's agent mode) can orchestrate —

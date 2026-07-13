@@ -8,6 +8,7 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 - **Multi-language sync** — the new key is added to every language file in your i18n folder at once: the real value goes into your main language, and the others get a `[TODO] translation not implemented` placeholder so nothing is silently missing. Existing translations in other languages are never overwritten.
 - **Key and scope modes** — type the full key yourself, or let the extension generate one from the selected text under a scope you choose.
 - **Interpolation params** — `{{ ... }}` placeholders in the selection are detected, can be renamed inline, and are wired into the generated `translate` pipe.
+- **Inline translation preview** — every `'key' | translate` shows its value greyed right after the key, so you read the actual text without opening the JSON. Toggle with `ngx-translatorex.inlineTranslations`.
 - **Inline translation tooltips** — hover a key in your templates to see its translated value.
 - **IntelliSense completions** — get autocomplete for existing translation keys as you type.
 - **Missing-key diagnostics** — keys used with the `translate` pipe or `TranslateService` (`.instant`/`.get`/`.stream`) that don't exist in your i18n file are underlined as warnings, with a **Create i18n key** quick fix that adds them across all languages.
@@ -56,6 +57,7 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.hardcodedStringsIgnore` | Strings to never flag (supports `*` wildcards). | `[]` |
 | `ngx-translatorex.autoTranslateOnCreate` | On adding a key, translate it into the other languages with your model instead of leaving placeholders. | `false` |
 | `ngx-translatorex.sortKeysOnSave` | Alphabetically sort each i18n file whenever the extension writes to it. | `false` |
+| `ngx-translatorex.inlineTranslations` | Show each key's main-language value inline (greyed) after the key. | `true` |
 
 ## Commands
 

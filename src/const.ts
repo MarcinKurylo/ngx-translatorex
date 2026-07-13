@@ -10,6 +10,9 @@ export const HARDCODED_DIAGNOSTIC_SOURCE = 'ngx-translatorex (hardcoded string)'
 /** Inline marker inserted by the "Ignore" quick fix to suppress detection on the next line. */
 export const INLINE_IGNORE_MARKER = '<!-- i18n-ignore -->';
 
+/** Folders never worth scanning for templates, kept out of file searches for speed. */
+export const HTML_SCAN_EXCLUDE = '**/{node_modules,dist,.angular,out,coverage}/**';
+
 /**
  * Placeholder written for a new key into every language file other than the
  * main one, so the key exists everywhere and untranslated languages are easy

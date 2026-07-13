@@ -5,6 +5,7 @@ import { HoverProviders } from './hoverProviders';
 import { DiagnosticsProvider } from './diagnosticsProvider';
 import { HardcodedStringsProvider } from './hardcodedStringsProvider';
 import { DefinitionProviders } from './definitionProviders';
+import { LanguageModelTools } from './languageModelTools';
 import { EXTENSION_IDENTIFIER } from './const';
 import { FileSystemManager } from './utils/fileSystemManager';
 
@@ -56,6 +57,8 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		DefinitionProviders.registerDefinitionProvider()
 	];
 
+	const languageModelTools = LanguageModelTools.register();
+
 	const completionProviders = [
 		CompletionProviders.registerCompletionProvider()
 	];
@@ -64,6 +67,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		...commands,
 		...hoverProviders,
 		...definitionProviders,
+		...languageModelTools,
 		...completionProviders,
 		...diagnostics,
 		...hardcodedStrings,

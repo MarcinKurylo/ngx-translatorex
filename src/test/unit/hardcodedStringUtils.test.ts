@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { findHardcodedStrings, locateHardcodedStrings, planBulkExtraction } from '../../utils/hardcodedStringUtils';
+import { applyExtractionToText, findHardcodedStrings, locateHardcodedStrings, planBulkExtraction } from '../../utils/hardcodedStringUtils';
 
 const texts = (html: string, options?: Parameters<typeof findHardcodedStrings>[1]) =>
   findHardcodedStrings(html, options).map((c) => c.text);
@@ -209,5 +209,20 @@ describe('planBulkExtraction', () => {
     const plan = planBulkExtraction(find('<h1>First</h1><p>Second</p>'), '');
     assert.deepStrictEqual(plan.map((p) => p.key), ['first', 'second']);
     assert.ok(plan[0].index < plan[1].index);
+  });
+});
+
+describe('applyExtractionToText', () => {
+  it('replaces every planned occurrence with its snippet, offsets intact', () => {
+    const html = '<h1>Welcome home</h1><button>Save</button>';
+    const out = applyExtractionToText(html, planBulkExtraction(findHardcodedStrings(html), 'home'));
+    assert.strictEqual(
+      out,
+      `<h1>{{ 'home.welcome_home' | translate }}</h1><button>{{ 'home.save' | translate }}</button>`
+    );
+  });
+
+  it('returns the text unchanged for an empty plan', () => {
+    assert.strictEqual(applyExtractionToText('<p>x</p>', []), '<p>x</p>');
   });
 });

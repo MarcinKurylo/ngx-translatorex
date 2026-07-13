@@ -93,4 +93,60 @@ describe('findHardcodedStrings', () => {
     assert.deepStrictEqual(found.map((c) => c.text), ['First', 'Second']);
     assert.ok(found[0].index < found[1].index);
   });
+
+  describe('edge cases', () => {
+    it('returns nothing for empty or whitespace-only input', () => {
+      assert.deepStrictEqual(findHardcodedStrings(''), []);
+      assert.deepStrictEqual(findHardcodedStrings('   \n\t '), []);
+    });
+
+    it('flags text that appears before the first tag', () => {
+      assert.deepStrictEqual(texts('Leading copy<div>x</div>'), ['Leading copy']);
+    });
+
+    it('captures a multi-line text node whole, with a correct offset', () => {
+      const html = '<p>First line\nsecond line</p>';
+      const [candidate] = findHardcodedStrings(html);
+      assert.strictEqual(candidate.text, 'First line\nsecond line');
+      assert.strictEqual(html.slice(candidate.index, candidate.index + candidate.length), 'First line\nsecond line');
+    });
+
+    it('handles single-quoted values and spaces around the attribute =', () => {
+      assert.deepStrictEqual(texts(`<input title = 'Enter name'>`), ['Enter name']);
+    });
+
+    it('keeps an apostrophe inside prose', () => {
+      assert.deepStrictEqual(texts(`<p>Don't stop</p>`), [`Don't stop`]);
+    });
+
+    it('skips an attribute whose value is only an interpolation', () => {
+      assert.deepStrictEqual(texts(`<input placeholder="{{ ph }}">`), []);
+    });
+
+    it('skips a node made of several interpolations with no static word', () => {
+      assert.deepStrictEqual(texts('<p>{{ a }} {{ b }}</p>'), []);
+    });
+
+    it('skips an entity-only node but keeps an entity mixed with words, verbatim', () => {
+      assert.deepStrictEqual(texts('<p>&nbsp;</p>'), []);
+      assert.deepStrictEqual(texts('<footer>&copy; Acme Inc</footer>'), ['&copy; Acme Inc']);
+    });
+
+    it('keeps all-caps acronyms', () => {
+      assert.deepStrictEqual(texts('<a>FAQ</a>'), ['FAQ']);
+    });
+
+    it('matches wildcard ignore patterns on a word boundary, not mid-word', () => {
+      const html = '<p>Read more</p><p>Reader</p>';
+      assert.deepStrictEqual(texts(html, { ignore: ['Read *'] }), ['Reader']);
+    });
+
+    it('treats minLength as inclusive', () => {
+      assert.deepStrictEqual(texts('<b>Hi</b>', { minLength: 2 }), ['Hi']);
+    });
+
+    it('is case-sensitive for exact ignore patterns', () => {
+      assert.deepStrictEqual(texts('<p>OK</p>', { ignore: ['ok'] }), ['OK']);
+    });
+  });
 });

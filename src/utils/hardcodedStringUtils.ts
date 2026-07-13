@@ -37,8 +37,12 @@ const TEXT_ATTRIBUTES = ['title', 'placeholder', 'aria-label', 'alt', 'matToolti
 /** Blocks whose content must never be scanned (masked out, offsets preserved). */
 const MASKED_BLOCKS = /<script\b[^>]*>[\s\S]*?<\/script>|<style\b[^>]*>[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi;
 
-/** Text between two tags. The text itself never contains `<`. */
-const TEXT_NODE = />([^<]+)</g;
+/**
+ * A run of text ending at a tag — either following a `>` or at the very start of
+ * the document. The trailing `<` is matched via lookahead so it stays available
+ * for the next text node. The text itself never contains `<`.
+ */
+const TEXT_NODE = /(?:^|>)([^<]+)(?=<)/g;
 
 /** A plain (non-bound) `title`/`placeholder`/`aria-label` attribute with a quoted value. */
 const TEXT_ATTRIBUTE = new RegExp(`(?<=\\s)(?:${TEXT_ATTRIBUTES.join('|')})\\s*=\\s*(['"])(.*?)\\1`, 'g');
@@ -148,7 +152,7 @@ export function findHardcodedStrings(
   };
 
   for (const match of masked.matchAll(TEXT_NODE)) {
-    consider(match[1], match.index! + 1);
+    consider(match[1], match.index! + match[0].length - match[1].length);
   }
   for (const match of masked.matchAll(TEXT_ATTRIBUTE)) {
     const valueOffset = match.index! + match[0].indexOf(match[1]) + 1;

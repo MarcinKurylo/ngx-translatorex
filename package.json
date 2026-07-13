@@ -156,6 +156,12 @@
 						"default": [],
 						"scope": "resource",
 						"description": "Strings to never flag as hard-coded. Supports '*' wildcards (e.g. 'OK', '© *')."
+					},
+					"ngx-translatorex.autoTranslateOnCreate": {
+						"type": "boolean",
+						"default": false,
+						"scope": "resource",
+						"description": "When a new key is added, immediately translate it into the other languages with your language model instead of leaving placeholders. Requires a language model provider (e.g. GitHub Copilot). Opt-in."
 					}
 				}
 			}

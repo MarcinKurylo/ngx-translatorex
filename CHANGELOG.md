@@ -4,6 +4,10 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 ## [Unreleased]
 
+- Inline translation preview: each `'key' | translate` (and `TranslateService`)
+  reference is annotated with its main-language value shown greyed, inline right
+  after the key — see the text without opening the JSON. On by default; toggle
+  with `ngx-translatorex.inlineTranslations`.
 - Extract interpolated text: `extractString` and the bulk extract now handle text
   with `{{ … }}` — the tokens become `{{ name }}` in the i18n value and are bound
   in the snippet (`{{ 'key' | translate:{ userName } }}`), instead of being

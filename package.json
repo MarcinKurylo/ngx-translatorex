@@ -168,6 +168,12 @@
 						"default": false,
 						"scope": "resource",
 						"description": "Alphabetically sort each i18n file (recursively) whenever the extension writes to it."
+					},
+					"ngx-translatorex.inlineTranslations": {
+						"type": "boolean",
+						"default": true,
+						"scope": "resource",
+						"description": "Show each translation key's main-language value inline (greyed) after the key in templates and components."
 					}
 				}
 			}

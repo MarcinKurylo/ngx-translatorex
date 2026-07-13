@@ -22,6 +22,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Multi-language sync: the key is written to every language file in the i18n folder — the real value into the main language, a placeholder into the rest (existing values are never overwritten).
 - `key` and `scope` modes (type the key, or auto-generate it from the selection).
 - Interpolation param detection, inline rename and binding into the `translate` pipe.
+- Inline translation preview: a key's value shown greyed after the key in templates/components.
 - Hover tooltips showing a key's translated value.
 - IntelliSense completions for existing keys.
 - Missing-key diagnostics for `translate` pipe / `TranslateService` usages, with a "Create i18n key" quick fix.
@@ -49,9 +50,10 @@ settings and commands.
   the i18n file watcher, notifications).
 - `src/commands.ts`, `src/hoverProviders.ts`, `src/completionProviders.ts`,
   `src/definitionProviders.ts`, `src/diagnosticsProvider.ts`,
-  `src/hardcodedStringsProvider.ts` — the contributed commands and providers
-  (missing-key diagnostics, go-to-definition, and the opt-in hard-coded-string
-  hints with their extract/ignore quick fixes).
+  `src/hardcodedStringsProvider.ts`, `src/inlineTranslationDecorations.ts` — the
+  contributed commands and providers (missing-key diagnostics, go-to-definition,
+  the opt-in hard-coded-string hints with their extract/ignore quick fixes, and
+  the inline translation-value previews).
 - `src/utils/diagnosticsUtils.ts` — pure, `vscode`-free detection of
   translate-key references in HTML/TS. Unit-tested directly.
 - `src/utils/hardcodedStringUtils.ts` — pure, `vscode`-free detection of

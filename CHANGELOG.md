@@ -2,7 +2,7 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
-## [Unreleased]
+## [0.4.0]
 
 - Hard-coded string detection (experimental, opt-in via
   `ngx-translatorex.detectHardcodedStrings`): flags untranslated user-facing
@@ -20,6 +20,8 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
   line numbers. Runs under a cancellable progress notification with
   bounded-concurrency file reads, so it stays responsive on large projects, and
   works regardless of the live opt-in setting.
+- Marketplace metadata: clearer description, added `Linters` category, more
+  keywords, and `homepage`/`bugs` links.
 
 ## [0.3.0]
 

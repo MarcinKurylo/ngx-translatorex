@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
-import { TranslationTree, deleteKey, flattenObject, renameKey, setKey } from './translationUtils';
+import { TranslationTree, deleteKey, findUntranslatedKeys, flattenObject, renameKey, setKey } from './translationUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
@@ -203,15 +203,16 @@ export class FileSystemManager {
   }
 
   /**
-   * Collects every secondary-language key still holding the placeholder for which
-   * the main language has a real value, so those can be auto-translated. Purely
+   * Collects every secondary-language key that still needs translating from the
+   * main language — keys that are missing from the language file (e.g. a
+   * hand-made stub) as well as keys still holding the placeholder. Purely
    * read-only — the returned items feed a confirmation prompt before any writes.
    *
    * @param placeholder The placeholder value that marks an untranslated key.
-   * @returns One item per fillable placeholder, with the target language, key and
-   * the main-language source text.
+   * @returns One item per fillable key, with the target language, key and the
+   * main-language source text.
    */
-  public static async collectPlaceholders(
+  public static async collectUntranslated(
     placeholder: string
   ): Promise<{ uri: vscode.Uri; language: string; key: string; source: string }[]> {
     const mainUri = await FileSystemManager.getUri();
@@ -224,10 +225,8 @@ export class FileSystemManager {
       }
       const language = uri.path.split('/').pop()!.replace(/\.json$/, '');
       const flat = flattenObject(await FileSystemManager.readJson(uri));
-      for (const key of Object.keys(flat)) {
-        if (flat[key] === placeholder && typeof mainFlat[key] === 'string' && mainFlat[key] !== placeholder) {
-          items.push({ uri, language, key, source: mainFlat[key] });
-        }
+      for (const key of findUntranslatedKeys(mainFlat, flat, placeholder)) {
+        items.push({ uri, language, key, source: mainFlat[key] });
       }
     }
     return items;
@@ -316,6 +315,56 @@ export class FileSystemManager {
     } catch (e) {
       NotificationManager.showErrorMessage('Save json failed');
       return false;
+    }
+  }
+
+  /**
+   * Writes many key/value translations across language files in one pass, reading
+   * and writing each affected file once. Used by the agent `setTranslations` tool
+   * so a bulk fill needs a single confirmation. Items for a language file that
+   * does not exist are skipped.
+   *
+   * @returns `saved` — whether writes succeeded; `written` — number of entries applied.
+   */
+  public static async setTranslations(
+    items: { language: string; key: string; value: string }[]
+  ): Promise<{ saved: boolean; written: number }> {
+    try {
+      const uris = await FileSystemManager.getLanguageUris();
+      const uriByLanguage = new Map<string, vscode.Uri>();
+      for (const uri of uris) {
+        uriByLanguage.set(uri.path.split('/').pop()!.replace(/\.json$/, ''), uri);
+      }
+      const mainLanguage = ExtensionConfigManager.getConfigValue('language') ?? 'en';
+      const trees = new Map<string, { uri: vscode.Uri; tree: TranslationTree }>();
+      let written = 0;
+      let mainChanged = false;
+      for (const item of items) {
+        const uri = uriByLanguage.get(item.language);
+        if (!uri) {
+          continue;
+        }
+        const key = uri.toString();
+        if (!trees.has(key)) {
+          trees.set(key, { uri, tree: await FileSystemManager.readJson(uri) });
+        }
+        setKey(trees.get(key)!.tree, item.key, item.value);
+        if (item.language === mainLanguage) {
+          FileSystemManager.cache[item.key] = item.value;
+          mainChanged = true;
+        }
+        written++;
+      }
+      for (const { uri, tree } of trees.values()) {
+        await FileSystemManager.writeJson(uri, tree);
+      }
+      if (mainChanged) {
+        FileSystemManager.onCacheChanged?.();
+      }
+      return { saved: true, written };
+    } catch (e) {
+      NotificationManager.showErrorMessage('Save json failed');
+      return { saved: false, written: 0 };
     }
   }
 

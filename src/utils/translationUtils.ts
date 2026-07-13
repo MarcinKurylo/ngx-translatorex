@@ -263,6 +263,28 @@ export function buildTranslationReport(
 }
 
 /**
+ * Returns the keys of a secondary language that still need translating from the
+ * main language: keys whose main-language value is a real string (not the
+ * placeholder) and which are either absent from the language or still hold the
+ * placeholder. Covers both a hand-made stub file (missing keys) and keys synced
+ * as `[TODO]` placeholders.
+ */
+export function findUntranslatedKeys(
+  mainFlat: { [key: string]: string },
+  languageFlat: { [key: string]: string },
+  placeholder: string
+): string[] {
+  return Object.keys(mainFlat).filter((key) => {
+    const source = mainFlat[key];
+    if (typeof source !== 'string' || source === placeholder) {
+      return false;
+    }
+    const current = languageFlat[key];
+    return current === undefined || current === placeholder;
+  });
+}
+
+/**
  * Splits a user-provided key of the form `key:param1:param2` into the key and
  * the list of custom parameter names to apply to the selection's params.
  */

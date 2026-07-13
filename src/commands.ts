@@ -475,12 +475,13 @@ export class Commands {
   }
 
   /**
-   * Registers the command that auto-translates every untranslated placeholder in
-   * the secondary language files using the user's own language model (Copilot or
-   * similar) — no external translation service. It counts the fillable
-   * placeholders, asks for confirmation, then translates each one under a
-   * cancellable progress notification, keeping `{{ params }}` intact and skipping
-   * any translation that drops them.
+   * Registers the command that auto-translates every untranslated key in the
+   * secondary language files using the user's own language model (Copilot or
+   * similar) — no external translation service. "Untranslated" covers both keys
+   * missing entirely (e.g. a hand-made stub language file) and keys still holding
+   * the placeholder. It counts them, asks for confirmation, then translates each
+   * under a cancellable progress notification, keeping `{{ params }}` intact and
+   * skipping any translation that drops them.
    *
    * @returns The command disposable, to be added to the extension subscriptions.
    */
@@ -490,16 +491,16 @@ export class Commands {
         return NotificationManager.showErrorMessage('Auto-translation needs VS Code 1.90+ with a language model (e.g. GitHub Copilot).');
       }
       const placeholder = ExtensionConfigManager.getPlaceholder();
-      const items = await FileSystemManager.collectPlaceholders(placeholder);
+      const items = await FileSystemManager.collectUntranslated(placeholder);
       if (!items.length) {
-        return NotificationManager.showInfoMessage('No untranslated placeholders to fill');
+        return NotificationManager.showInfoMessage('No untranslated keys to fill');
       }
       const model = await LanguageModelManager.selectModel();
       if (!model) {
         return NotificationManager.showErrorMessage('No language model available. Enable GitHub Copilot or another chat model provider.');
       }
       const confirm = await vscode.window.showWarningMessage(
-        `Translate ${items.length} placeholder(s) with ${model.name}? The source strings are sent to your language model.`,
+        `Translate ${items.length} untranslated key(s) with ${model.name}? The source strings are sent to your language model.`,
         { modal: true },
         'Translate'
       );
@@ -507,7 +508,7 @@ export class Commands {
         return;
       }
       const result = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Translating placeholders…', cancellable: true },
+        { location: vscode.ProgressLocation.Notification, title: 'Translating untranslated keys…', cancellable: true },
         (progress, token) => {
           const translate = async (source: string, language: string) => {
             const raw = await LanguageModelManager.complete(model, buildTranslationPrompt(source, language), token);
@@ -530,7 +531,7 @@ export class Commands {
         return;
       }
       NotificationManager.showInfoMessage(
-        `Filled ${result.filled} placeholder(s)${result.skipped ? `, skipped ${result.skipped}` : ''}`
+        `Filled ${result.filled} key(s)${result.skipped ? `, skipped ${result.skipped}` : ''}`
       );
     });
   }

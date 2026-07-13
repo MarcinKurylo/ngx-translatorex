@@ -11,7 +11,8 @@ const TOOL = {
   scan: `${EXTENSION_IDENTIFIER}_scanHardcodedStrings`,
   extract: `${EXTENSION_IDENTIFIER}_extractString`,
   listMissing: `${EXTENSION_IDENTIFIER}_listMissingTranslations`,
-  setTranslation: `${EXTENSION_IDENTIFIER}_setTranslation`
+  setTranslation: `${EXTENSION_IDENTIFIER}_setTranslation`,
+  setTranslations: `${EXTENSION_IDENTIFIER}_setTranslations`
 };
 
 /** How many template files to read at once during a scan. */
@@ -33,7 +34,7 @@ const detectionOptions = () => ({
  * Exposes the extension's core operations as VS Code Language Model tools so an
  * AI agent (e.g. Copilot's agent mode) can drive the whole i18n flow:
  * scan for hard-coded strings, extract them into keys, see what's still missing,
- * and write translations. Each tool is a thin, structured wrapper over the same
+ * and write translations (singly or in a batch). Each tool is a thin, structured wrapper over the same
  * engine the commands use; the agent supplies the reasoning (semantic key names,
  * the translated text).
  */
@@ -51,7 +52,8 @@ export class LanguageModelTools {
       vscode.lm.registerTool(TOOL.scan, LanguageModelTools.scanTool()),
       vscode.lm.registerTool(TOOL.extract, LanguageModelTools.extractTool()),
       vscode.lm.registerTool(TOOL.listMissing, LanguageModelTools.listMissingTool()),
-      vscode.lm.registerTool(TOOL.setTranslation, LanguageModelTools.setTranslationTool())
+      vscode.lm.registerTool(TOOL.setTranslation, LanguageModelTools.setTranslationTool()),
+      vscode.lm.registerTool(TOOL.setTranslations, LanguageModelTools.setTranslationsTool())
     ];
   }
 
@@ -145,6 +147,26 @@ export class LanguageModelTools {
           options.input.value
         );
         return result({ saved });
+      }
+    };
+  }
+
+  /** Tool: write many translations across language files in one confirmed batch. */
+  private static setTranslationsTool(): vscode.LanguageModelTool<{ translations: { language: string; key: string; value: string }[] }> {
+    return {
+      prepareInvocation: (options) => {
+        const count = options.input.translations?.length ?? 0;
+        return {
+          invocationMessage: `Writing ${count} translation(s)`,
+          confirmationMessages: {
+            title: 'Write translations',
+            message: `Write ${count} translation(s) across the language files?`
+          }
+        };
+      },
+      invoke: async (options) => {
+        const { saved, written } = await FileSystemManager.setTranslations(options.input.translations ?? []);
+        return result({ saved, written });
       }
     };
   }

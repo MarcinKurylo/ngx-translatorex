@@ -2,6 +2,18 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [0.5.1]
+
+- Auto-translate now fills **missing** keys, not just placeholders: a hand-made
+  stub language file (e.g. a `pl.json` with only a few keys while `en.json` is
+  complete) is fully populated — any key present in the main language but absent
+  from (or still a placeholder in) another language is translated. One run, one
+  confirmation.
+- New agent tool `setTranslations` — write many translations across language
+  files in a single confirmed batch, so an agent filling a stub no longer prompts
+  once per key. `listMissingTranslations` / `setTranslation` now point the agent
+  at it for bulk writes.
+
 ## [0.5.0]
 
 - Agent tools (VS Code Language Model Tools): the extension now exposes its core

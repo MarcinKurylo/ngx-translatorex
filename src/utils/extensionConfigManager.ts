@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BooleanConfigValue, ConfigValue, EXTENSION_IDENTIFIER, MISSING_TRANSLATION_PLACEHOLDER } from '../const';
+import { ArrayConfigValue, BooleanConfigValue, ConfigValue, EXTENSION_IDENTIFIER, MISSING_TRANSLATION_PLACEHOLDER, NumberConfigValue } from '../const';
 export class ExtensionConfigManager {
   /**
    * Reads a string setting from the extension's configuration section.
@@ -20,6 +20,27 @@ export class ExtensionConfigManager {
    */
   public static getBooleanConfigValue(key: BooleanConfigValue, fallback: boolean): boolean {
     return vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).get<boolean>(key) ?? fallback;
+  }
+
+  /**
+   * Reads a numeric setting from the extension's configuration section.
+   *
+   * @param key The setting to read (`hardcodedStringsMinLength`).
+   * @param fallback The value to use when the setting is unset.
+   * @returns The configured number, or `fallback` when unset.
+   */
+  public static getNumberConfigValue(key: NumberConfigValue, fallback: number): number {
+    return vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).get<number>(key) ?? fallback;
+  }
+
+  /**
+   * Reads a string-array setting from the extension's configuration section.
+   *
+   * @param key The setting to read (`hardcodedStringsIgnore`).
+   * @returns The configured array, or an empty array when unset.
+   */
+  public static getArrayConfigValue(key: ArrayConfigValue): string[] {
+    return vscode.workspace.getConfiguration(EXTENSION_IDENTIFIER).get<string[]>(key) ?? [];
   }
 
   /**

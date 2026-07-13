@@ -2,6 +2,16 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [Unreleased]
+
+- Hard-coded string detection (experimental, opt-in via
+  `ngx-translatorex.detectHardcodedStrings`): flags untranslated user-facing
+  text and `title`/`placeholder`/`aria-label` values in HTML templates as
+  Information hints, with **Extract to i18n key** and **Ignore this string**
+  quick fixes. Ignore via the `hardcodedStringsIgnore` list (supports `*`
+  wildcards) or an inline `<!-- i18n-ignore -->` marker. The detection
+  heuristics are intentionally minimal for now and will be refined.
+
 ## [0.3.0]
 
 - Go-to-definition: F12 or Ctrl/Cmd+Click on a key used with the `translate`

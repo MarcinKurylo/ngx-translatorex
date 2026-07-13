@@ -4,6 +4,9 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 ## [Unreleased]
 
+- Translation coverage in the status bar: per-language coverage
+  (`pl 87% · fr 60% · es 40%`) with a tooltip breakdown, click-through to the full
+  report. Toggle with `ngx-translatorex.translationCoverageStatusBar`.
 - Inline translation preview: each `'key' | translate` (and `TranslateService`)
   reference is annotated with its main-language value shown greyed, inline right
   after the key — see the text without opening the JSON. On by default; toggle

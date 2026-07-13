@@ -21,6 +21,7 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 - **AI agent tools** — with an agent (e.g. Copilot's agent mode), the extension provides tools to scan for hard-coded strings, extract them into keys it names semantically (`page.title`, `actions.save`), list what's still missing, and write translations — so you can ask the agent to run the whole scan → extract → translate flow for you. Requires VS Code 1.95+ and a language model provider.
 - **Automatic refresh** — the extension watches your i18n file and reloads translations when it changes outside the editor (a manual edit, a `git pull`, or a branch switch), so tooltips and completions stay accurate.
 - **One-click JSON sort** — alphabetically sort your translation file, recursively.
+- **Coverage in the status bar** — see per-language progress (`pl 87% · fr 60%`) at a glance; click it for the full report.
 
 ## Getting started
 
@@ -58,6 +59,7 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.autoTranslateOnCreate` | On adding a key, translate it into the other languages with your model instead of leaving placeholders. | `false` |
 | `ngx-translatorex.sortKeysOnSave` | Alphabetically sort each i18n file whenever the extension writes to it. | `false` |
 | `ngx-translatorex.inlineTranslations` | Show each key's main-language value inline (greyed) after the key. | `true` |
+| `ngx-translatorex.translationCoverageStatusBar` | Show per-language translation coverage in the status bar. | `true` |
 
 ## Commands
 

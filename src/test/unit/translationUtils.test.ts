@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import {
   TranslationTree,
+  buildTranslationCoverage,
   buildTranslationReport,
   checkForParamsInSelection,
   deleteKey,
@@ -221,6 +222,33 @@ describe('findUntranslatedKeys', () => {
 
   it('returns everything for a totally empty language file', () => {
     assert.deepStrictEqual(findUntranslatedKeys(main, {}, PLACEHOLDER).sort(), ['common.save', 'home.title', 'home.welcome']);
+  });
+});
+
+describe('buildTranslationCoverage', () => {
+  it('reports each language as a percentage of the key union', () => {
+    const coverage = buildTranslationCoverage([
+      { language: 'en', tree: { home: { title: 'Home', welcome: 'Hi' }, common: { save: 'Save', cancel: 'Cancel' } } },
+      { language: 'pl', tree: { home: { title: 'Start', welcome: 'Cześć' }, common: { save: 'Zapisz' } } },
+      { language: 'de', tree: {} }
+    ], PLACEHOLDER);
+    const by = Object.fromEntries(coverage.map((c) => [c.language, c.percent]));
+    assert.strictEqual(by.en, 100);
+    assert.strictEqual(by.pl, 75); // 3 of 4 keys translated
+    assert.strictEqual(by.de, 0);
+  });
+
+  it('counts placeholder values as untranslated', () => {
+    const coverage = buildTranslationCoverage([
+      { language: 'en', tree: { a: '1', b: '2' } },
+      { language: 'pl', tree: { a: 'x', b: PLACEHOLDER } }
+    ], PLACEHOLDER);
+    assert.strictEqual(coverage.find((c) => c.language === 'pl')!.percent, 50);
+  });
+
+  it('reports 100% when there are no keys', () => {
+    const coverage = buildTranslationCoverage([{ language: 'en', tree: {} }], PLACEHOLDER);
+    assert.strictEqual(coverage[0].percent, 100);
   });
 });
 

@@ -6,6 +6,7 @@ import { DiagnosticsProvider } from './diagnosticsProvider';
 import { HardcodedStringsProvider } from './hardcodedStringsProvider';
 import { DefinitionProviders } from './definitionProviders';
 import { InlineTranslationDecorations } from './inlineTranslationDecorations';
+import { TranslationCoverageStatusBar } from './translationCoverageStatusBar';
 import { LanguageModelTools } from './languageModelTools';
 import { EXTENSION_IDENTIFIER } from './const';
 import { FileSystemManager } from './utils/fileSystemManager';
@@ -22,9 +23,11 @@ export const activate = async (context: vscode.ExtensionContext) => {
 	const diagnostics = DiagnosticsProvider.register();
 	const hardcodedStrings = HardcodedStringsProvider.register();
 	const inlineTranslations = InlineTranslationDecorations.register();
+	const coverageStatusBar = TranslationCoverageStatusBar.register();
 	FileSystemManager.onCacheChanged = () => {
 		DiagnosticsProvider.refreshAll();
 		InlineTranslationDecorations.refresh();
+		void TranslationCoverageStatusBar.refresh();
 	};
 	await FileSystemManager.refreshCache();
 	FileSystemManager.watchTranslationFile();
@@ -35,6 +38,8 @@ export const activate = async (context: vscode.ExtensionContext) => {
 			await FileSystemManager.refreshCache();
 			HardcodedStringsProvider.refreshAll();
 			InlineTranslationDecorations.refresh();
+			TranslationCoverageStatusBar.watchFiles();
+			void TranslationCoverageStatusBar.refresh();
 		}
 	});
 
@@ -74,6 +79,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		...hoverProviders,
 		...definitionProviders,
 		...inlineTranslations,
+		...coverageStatusBar,
 		...languageModelTools,
 		...completionProviders,
 		...diagnostics,

@@ -263,6 +263,26 @@ export function buildTranslationReport(
 }
 
 /**
+ * Computes the translation coverage of each language as a rounded percentage of
+ * the union of all keys: keys that are present and not the placeholder. A
+ * language with the full key set and no placeholders is 100%.
+ */
+export function buildTranslationCoverage(
+  languages: { language: string; tree: TranslationTree }[],
+  placeholder: string
+): { language: string; percent: number }[] {
+  const total = new Set<string>();
+  for (const entry of languages) {
+    Object.keys(flattenObject(entry.tree)).forEach((key) => total.add(key));
+  }
+  const size = total.size;
+  return buildTranslationReport(languages, placeholder).map((report) => ({
+    language: report.language,
+    percent: size ? Math.round(((size - report.missing.length - report.untranslated.length) / size) * 100) : 100
+  }));
+}
+
+/**
  * Returns the keys of a secondary language that still need translating from the
  * main language: keys whose main-language value is a real string (not the
  * placeholder) and which are either absent from the language or still hold the

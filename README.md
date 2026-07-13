@@ -31,6 +31,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Experimental, opt-in hard-coded-string detection in HTML templates (Information hints) with extract/ignore quick fixes.
 - Workspace-wide hard-coded-strings scan (cancellable, bounded-concurrency) that reports every untranslated template string grouped by file.
 - AI auto-translation of `[TODO]` placeholders via the VS Code Language Model API (your own model, no external service), preserving `{{ params }}`.
+- One-command pipeline: extract every hard-coded string in a template into i18n keys (single undoable edit) and auto-translate the new placeholders.
 - Per-language translation report (missing and untranslated keys across the i18n folder).
 - Automatic cache refresh via a file watcher when the i18n file changes outside the editor.
 - One-click recursive JSON sort.

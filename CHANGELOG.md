@@ -4,6 +4,14 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 ## [Unreleased]
 
+- Extract all hard-coded strings in a template: the **Extract all hard-coded
+  strings in this template** command turns every hard-coded string in the active
+  HTML file into i18n keys under a scope you choose (empty scope → top-level
+  keys), writes them across all language files (with placeholders), rewrites the
+  template in a single undoable edit, and then offers to auto-translate the new
+  placeholders — the scan → extract → translate pipeline in one step. Keys are
+  slugified from the text with collision-safe disambiguation; identical text
+  reuses one key; interpolated text is left untouched for now.
 - Auto-translate missing placeholders (AI): the **Auto-translate missing
   placeholders** command fills every secondary-language `[TODO]` placeholder that
   has a real main-language value, using your own VS Code language model

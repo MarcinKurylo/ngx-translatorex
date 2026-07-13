@@ -294,7 +294,8 @@ export function renameParams(selection: string, paramNames: string[]): string {
  * Builds a full key in `scope` mode by appending a slug derived from the
  * selected text to the scope: special characters and whitespace become single
  * underscores. When the scope already ends with a dot it is returned as-is
- * (without the trailing dot).
+ * (without the trailing dot); an empty scope yields the bare slug (top-level
+ * key, no leading dot).
  */
 export function generateKey(scope: string, value: string): string {
   if (scope.endsWith('.')) {
@@ -306,5 +307,5 @@ export function generateKey(scope: string, value: string): string {
     .trim()
     .split(/\s+/)
     .join('_');
-  return `${scope}.${slug}`;
+  return scope ? `${scope}.${slug}` : slug;
 }

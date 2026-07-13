@@ -13,6 +13,8 @@
  * mechanisms exclude are skipped.
  */
 
+import { generateKey } from './translationUtils';
+
 /** A candidate hard-coded string found in template source text. */
 export interface HardcodedStringCandidate {
   /** The user-facing text (trimmed for text nodes, raw for attribute values). */
@@ -192,4 +194,53 @@ export function locateHardcodedStrings(
     located.push({ ...candidate, line });
   }
   return located;
+}
+
+/** A single planned extraction: where to replace, the key to create, and the snippet. */
+export interface PlannedExtraction {
+  /** Offset of the text to replace in the source. */
+  index: number;
+  /** Length of the text to replace. */
+  length: number;
+  /** The original user-facing text (the value for the new key). */
+  text: string;
+  /** The generated dotted key. */
+  key: string;
+  /** The replacement snippet (`{{ 'key' | translate }}`). */
+  snippet: string;
+}
+
+/**
+ * Plans a bulk extraction of hard-coded strings into i18n keys under a scope
+ * (empty scope → top-level keys). Keys are slugified from the text via
+ * {@link generateKey}. Identical text reuses the same key (dedup); different text
+ * that slugifies to the same key is disambiguated with a numeric suffix so no
+ * value is ever overwritten. Candidates containing an interpolation are skipped
+ * for now — binding their params during a bulk edit is out of scope.
+ *
+ * @returns One planned edit per replaceable occurrence, in source order.
+ */
+export function planBulkExtraction(candidates: HardcodedStringCandidate[], scope: string): PlannedExtraction[] {
+  const keyToValue = new Map<string, string>();
+  const plan: PlannedExtraction[] = [];
+  for (const candidate of candidates) {
+    if (candidate.text.includes('{{')) {
+      continue;
+    }
+    const base = generateKey(scope, candidate.text);
+    let key = base;
+    let suffix = 2;
+    while (keyToValue.has(key) && keyToValue.get(key) !== candidate.text) {
+      key = `${base}_${suffix++}`;
+    }
+    keyToValue.set(key, candidate.text);
+    plan.push({
+      index: candidate.index,
+      length: candidate.length,
+      text: candidate.text,
+      key,
+      snippet: `{{ '${key}' | translate }}`
+    });
+  }
+  return plan;
 }

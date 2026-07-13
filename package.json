@@ -60,6 +60,14 @@
 			{
 				"command": "ngx-translatorex.showTranslationReport",
 				"title": "ngx-translatorex: Show translation report"
+			},
+			{
+				"command": "ngx-translatorex.renameTranslationKey",
+				"title": "ngx-translatorex: Rename i18n key across all languages"
+			},
+			{
+				"command": "ngx-translatorex.deleteTranslationKey",
+				"title": "ngx-translatorex: Delete i18n key across all languages"
 			}
 		],
 		"keybindings": [

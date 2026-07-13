@@ -3,11 +3,16 @@ import {
   TranslationTree,
   buildTranslationReport,
   checkForParamsInSelection,
+  deleteKey,
+  findKeyOffsetInJson,
   flattenObject,
   generateKey,
+  getNode,
   isKeyValid,
+  renameKey,
   renameParams,
   setKey,
+  setNode,
   sortObject,
   splitParamNames
 } from '../../utils/translationUtils';
@@ -82,6 +87,108 @@ describe('setKey', () => {
     const result = setKey(tree, 'home.subtitle', 'placeholder', { overwrite: false });
     assert.strictEqual((tree.home as TranslationTree).subtitle, 'placeholder');
     assert.strictEqual(result.written, true);
+  });
+});
+
+describe('getNode', () => {
+  it('returns a leaf value', () => {
+    assert.strictEqual(getNode({ home: { title: 'Home' } }, 'home.title'), 'Home');
+  });
+
+  it('returns a subtree', () => {
+    assert.deepStrictEqual(getNode({ home: { title: 'Home' } }, 'home'), { title: 'Home' });
+  });
+
+  it('returns undefined for a missing key', () => {
+    assert.strictEqual(getNode({ home: { title: 'Home' } }, 'home.missing'), undefined);
+    assert.strictEqual(getNode({ home: 'x' }, 'home.title'), undefined);
+  });
+});
+
+describe('setNode', () => {
+  it('stores a subtree, creating intermediate objects', () => {
+    const tree: TranslationTree = {};
+    setNode(tree, 'a.b', { c: '1' });
+    assert.deepStrictEqual(tree, { a: { b: { c: '1' } } });
+  });
+});
+
+describe('deleteKey', () => {
+  it('removes a leaf and prunes empty parents', () => {
+    const tree: TranslationTree = { home: { title: 'Home' }, common: { save: 'Save' } };
+    assert.strictEqual(deleteKey(tree, 'home.title'), true);
+    assert.deepStrictEqual(tree, { common: { save: 'Save' } });
+  });
+
+  it('keeps parents that still have siblings', () => {
+    const tree: TranslationTree = { home: { title: 'Home', welcome: 'Hi' } };
+    deleteKey(tree, 'home.title');
+    assert.deepStrictEqual(tree, { home: { welcome: 'Hi' } });
+  });
+
+  it('removes a whole subtree', () => {
+    const tree: TranslationTree = { home: { title: 'Home' }, common: { save: 'Save' } };
+    assert.strictEqual(deleteKey(tree, 'home'), true);
+    assert.deepStrictEqual(tree, { common: { save: 'Save' } });
+  });
+
+  it('returns false for a missing key', () => {
+    const tree: TranslationTree = { home: { title: 'Home' } };
+    assert.strictEqual(deleteKey(tree, 'home.missing'), false);
+    assert.strictEqual(deleteKey(tree, 'nope'), false);
+    assert.deepStrictEqual(tree, { home: { title: 'Home' } });
+  });
+});
+
+describe('renameKey', () => {
+  it('renames a leaf, moving its value', () => {
+    const tree: TranslationTree = { home: { title: 'Home' } };
+    assert.strictEqual(renameKey(tree, 'home.title', 'home.header'), true);
+    assert.deepStrictEqual(tree, { home: { header: 'Home' } });
+  });
+
+  it('moves a value to a new nested path and prunes the old branch', () => {
+    const tree: TranslationTree = { home: { title: 'Home' } };
+    renameKey(tree, 'home.title', 'page.heading');
+    assert.deepStrictEqual(tree, { page: { heading: 'Home' } });
+  });
+
+  it('renames a whole subtree', () => {
+    const tree: TranslationTree = { home: { title: 'Home', welcome: 'Hi' } };
+    renameKey(tree, 'home', 'landing');
+    assert.deepStrictEqual(tree, { landing: { title: 'Home', welcome: 'Hi' } });
+  });
+
+  it('returns false when the source key does not exist or is unchanged', () => {
+    const tree: TranslationTree = { home: { title: 'Home' } };
+    assert.strictEqual(renameKey(tree, 'missing', 'x'), false);
+    assert.strictEqual(renameKey(tree, 'home.title', 'home.title'), false);
+    assert.deepStrictEqual(tree, { home: { title: 'Home' } });
+  });
+});
+
+describe('findKeyOffsetInJson', () => {
+  const json = '{\n  "home": {\n    "title": "Home",\n    "welcome": "Welcome {{ name }}"\n  },\n  "common": {\n    "save": "Save"\n  }\n}\n';
+
+  it('finds the offset of a nested leaf key name', () => {
+    const offset = findKeyOffsetInJson(json, 'home.title');
+    assert.strictEqual(json.slice(offset!, offset! + 5), 'title');
+  });
+
+  it('finds an intermediate (object) key', () => {
+    const offset = findKeyOffsetInJson(json, 'common');
+    assert.strictEqual(json.slice(offset!, offset! + 6), 'common');
+  });
+
+  it('is not fooled by a value that matches a key name', () => {
+    const tricky = '{\n  "a": "save",\n  "common": {\n    "save": "Save"\n  }\n}';
+    const offset = findKeyOffsetInJson(tricky, 'common.save');
+    // must resolve inside "common", not the "save" value string on the "a" line
+    assert.ok(offset! > tricky.indexOf('"common"'));
+  });
+
+  it('returns undefined for a missing key', () => {
+    assert.strictEqual(findKeyOffsetInJson(json, 'home.missing'), undefined);
   });
 });
 

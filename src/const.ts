@@ -15,5 +15,7 @@ export enum ExtensionCommands  {
   ADD_NEW_TRANSLATION = 'addNewTranslation',
   SORT_JSON = 'sortJson',
   CREATE_TRANSLATION_KEY = 'createTranslationKey',
-  SHOW_TRANSLATION_REPORT = 'showTranslationReport'
+  SHOW_TRANSLATION_REPORT = 'showTranslationReport',
+  RENAME_TRANSLATION_KEY = 'renameTranslationKey',
+  DELETE_TRANSLATION_KEY = 'deleteTranslationKey'
 }

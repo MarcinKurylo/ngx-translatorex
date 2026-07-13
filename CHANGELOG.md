@@ -2,6 +2,16 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [Unreleased]
+
+- Go-to-definition: F12 or Ctrl/Cmd+Click on a key used with the `translate`
+  pipe (HTML) or `TranslateService` (TypeScript) jumps to that key's line in the
+  main language JSON file.
+- Rename i18n key: rename a key (leaf or whole namespace) and propagate the
+  change to every language file, moving each file's own value.
+- Delete i18n key: delete a key from every language file, pruning any objects
+  left empty by the removal.
+
 ## [0.0.1]
 
 - Initial release

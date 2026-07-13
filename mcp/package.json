@@ -1,0 +1,22 @@
+{
+  "name": "ngx-translatorex-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing ngx-translatorex i18n operations (scan / extract / list-missing / set-translations) to any MCP-capable agent, e.g. Claude.",
+  "license": "MIT",
+  "bin": {
+    "ngx-translatorex-mcp": "dist/mcp/src/server.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p ./"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^20.19.43"
+  }
+}

@@ -2,6 +2,7 @@
 .vscode-test/**
 .github/**
 out/test/**
+mcp/**
 
 src/**
 test-setup/**

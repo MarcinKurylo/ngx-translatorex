@@ -2,7 +2,7 @@
   "name": "ngx-translatorex",
 	"displayName": "ngx-translatorex",
 	"description": "Angular ngx-translate toolkit: one-shortcut extraction, multi-language sync, missing-key diagnostics, go-to-definition, key rename/delete, and hard-coded string detection.",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"publisher": "marcinex",
 	"license": "MIT",
 	"icon": "images/icon.png",
@@ -201,7 +201,7 @@
 				"toolReferenceName": "listMissingTranslations",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "List, per secondary language, the i18n keys that are missing or still hold the untranslated placeholder, each with its main-language source text. Use this to know what to translate, then call setTranslation for each.",
+				"modelDescription": "List, per secondary language, the i18n keys that are missing or still hold the untranslated placeholder, each with its main-language source text. Use this to know what to translate, then call setTranslations once with all the results (preferred), or setTranslation for a single key.",
 				"inputSchema": { "type": "object", "properties": {} }
 			},
 			{
@@ -210,7 +210,7 @@
 				"toolReferenceName": "setTranslation",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Write a single translation into one language file: sets the given key to the given value in <language>.json. Preserve any {{ interpolation }} tokens from the source text exactly. Returns whether the write succeeded.",
+				"modelDescription": "Write a single translation into one language file: sets the given key to the given value in <language>.json. Preserve any {{ interpolation }} tokens from the source text exactly. Prefer setTranslations when writing more than one. Returns whether the write succeeded.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {
@@ -219,6 +219,33 @@
 						"value": { "type": "string", "description": "The translated value, keeping any {{ params }} intact." }
 					},
 					"required": ["language", "key", "value"]
+				}
+			},
+			{
+				"name": "ngx-translatorex_setTranslations",
+				"displayName": "Set translations (batch)",
+				"toolReferenceName": "setTranslations",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Write many translations at once, across one or more language files, in a single operation. Prefer this over setTranslation when filling multiple keys (e.g. after listMissingTranslations). Preserve any {{ interpolation }} tokens exactly. Returns how many entries were written.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"translations": {
+							"type": "array",
+							"description": "The translations to write.",
+							"items": {
+								"type": "object",
+								"properties": {
+									"language": { "type": "string", "description": "Language code / file name without extension, e.g. 'pl'." },
+									"key": { "type": "string", "description": "The dotted i18n key." },
+									"value": { "type": "string", "description": "The translated value, keeping any {{ params }} intact." }
+								},
+								"required": ["language", "key", "value"]
+							}
+						}
+					},
+					"required": ["translations"]
 				}
 			}
 		]

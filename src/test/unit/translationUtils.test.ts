@@ -5,6 +5,7 @@ import {
   checkForParamsInSelection,
   deleteKey,
   findKeyOffsetInJson,
+  findUntranslatedKeys,
   flattenObject,
   generateKey,
   getNode,
@@ -189,6 +190,37 @@ describe('findKeyOffsetInJson', () => {
 
   it('returns undefined for a missing key', () => {
     assert.strictEqual(findKeyOffsetInJson(json, 'home.missing'), undefined);
+  });
+});
+
+describe('findUntranslatedKeys', () => {
+  const main = { 'home.title': 'Home', 'home.welcome': 'Hi', 'common.save': 'Save' };
+
+  it('includes keys missing from a stub language file', () => {
+    // pl has only one key — the rest are missing and must be caught
+    const pl = { 'home.title': 'Start' };
+    assert.deepStrictEqual(
+      findUntranslatedKeys(main, pl, PLACEHOLDER).sort(),
+      ['common.save', 'home.welcome']
+    );
+  });
+
+  it('includes keys still holding the placeholder', () => {
+    const pl = { 'home.title': 'Start', 'home.welcome': PLACEHOLDER, 'common.save': 'Zapisz' };
+    assert.deepStrictEqual(findUntranslatedKeys(main, pl, PLACEHOLDER), ['home.welcome']);
+  });
+
+  it('excludes keys already translated', () => {
+    const pl = { 'home.title': 'Start', 'home.welcome': 'Cześć', 'common.save': 'Zapisz' };
+    assert.deepStrictEqual(findUntranslatedKeys(main, pl, PLACEHOLDER), []);
+  });
+
+  it('excludes keys whose main value is itself the placeholder (nothing to translate from)', () => {
+    assert.deepStrictEqual(findUntranslatedKeys({ 'a.b': PLACEHOLDER }, {}, PLACEHOLDER), []);
+  });
+
+  it('returns everything for a totally empty language file', () => {
+    assert.deepStrictEqual(findUntranslatedKeys(main, {}, PLACEHOLDER).sort(), ['common.save', 'home.title', 'home.welcome']);
   });
 });
 

@@ -17,6 +17,7 @@
     "../src/utils/translationUtils.ts",
     "../src/utils/hardcodedStringUtils.ts",
     "../src/utils/translationLmUtils.ts",
-    "../src/utils/diagnosticsUtils.ts"
+    "../src/utils/diagnosticsUtils.ts",
+    "../src/utils/i18nToolUtils.ts"
   ]
 }

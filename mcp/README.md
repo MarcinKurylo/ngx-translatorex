@@ -162,14 +162,32 @@ home will not work.
 
 The package is publish-ready: a `prepare` hook rebuilds `dist/` before every
 publish, the `files`/`bin`/`engines`/metadata are set, and the tarball has been
-verified to install and run from a clean directory. Publishing is a manual,
-irreversible step — run it yourself with your own npm auth. From a **full
-checkout** (the build pulls in `../src/utils/*` via `tsconfig` `rootDir: ".."`,
-so it can't run from the `mcp/` folder alone):
+verified to install and run from a clean directory.
+
+### Automated (recommended) — push a tag
+
+The `Publish MCP` workflow (`.github/workflows/publish-mcp.yml`) publishes on any
+`mcp-v*` tag. It runs the unit tests, checks the tag matches `mcp/package.json`,
+builds, and publishes — choosing the **dist-tag from the version**: a prerelease
+(e.g. `0.1.0-preview.0`) goes to `preview`, a clean version to `latest`.
+
+One-time setup: create an npm **automation token** and add it as a repository
+secret named `NPM_TOKEN`. Then, to release:
+
+```bash
+# version in mcp/package.json must match the tag
+git tag mcp-v0.1.0-preview.0
+git push origin mcp-v0.1.0-preview.0
+```
+
+### Manual (fallback)
+
+From a **full checkout** (the build pulls in `../src/utils/*` via `tsconfig`
+`rootDir: ".."`, so it can't run from the `mcp/` folder alone):
 
 ```bash
 cd mcp
-npm publish                    # public latest → npx -y ngx-translatorex-mcp
+npm publish --tag preview      # or plain `npm publish` for a clean, latest release
 ```
 
 Once published, the client config collapses to one line — no local build, no

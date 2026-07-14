@@ -1,6 +1,6 @@
 {
   "name": "ngx-translatorex-mcp",
-  "version": "0.1.0",
+  "version": "0.1.0-preview.0",
   "description": "MCP server exposing ngx-translatorex i18n operations (scan / extract / list-missing / set-translations) to any MCP-capable agent, e.g. Claude.",
   "license": "MIT",
   "author": "Marcin Kuryło",

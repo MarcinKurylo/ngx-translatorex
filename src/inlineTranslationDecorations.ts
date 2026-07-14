@@ -17,18 +17,40 @@ const formatPreview = (value: string): string => {
 
 /**
  * Offset at which to anchor the badge: the end of this reference's translate
- * expression — just past the closing `}}` of the interpolation (HTML) or the
- * call's `)` (TypeScript) — so the badge sits after the whole `{{ … }}` rather
- * than mid-expression. Falls back to just after the key when no closer is found
- * on the same line (e.g. an attribute binding without interpolation).
+ * expression, so the badge sits after the whole thing rather than mid-expression.
+ *
+ * For TypeScript that is the call's closing `)`. For HTML it is whichever comes
+ * first on the line — the interpolation's `}}` (`{{ 'k' | translate }}`) or the
+ * attribute value's closing quote (`[title]="'k' | translate"`): a property
+ * binding has no `}}`, so without the quote bound the badge would wrongly jump
+ * to the next interpolation later on the line. Falls back to just after the key
+ * when no closer is found on the line.
  */
 const badgeOffset = (text: string, reference: TranslateKeyReference, languageId: string): number => {
   const afterKey = reference.index + reference.length + 1; // past the key's closing quote
   const newline = text.indexOf('\n', afterKey);
   const limit = newline === -1 ? text.length : newline;
-  const closer = languageId === 'html' ? '}}' : ')';
-  const at = text.indexOf(closer, afterKey);
-  return at !== -1 && at < limit ? at + closer.length : afterKey;
+
+  if (languageId !== 'html') {
+    const paren = text.indexOf(')', afterKey);
+    return paren !== -1 && paren < limit ? paren + 1 : afterKey;
+  }
+
+  // The attribute delimiter is the quote the key is *not* wrapped in.
+  const attrQuote = text[reference.index - 1] === '"' ? "'" : '"';
+  const interp = text.indexOf('}}', afterKey);
+  const attr = text.indexOf(attrQuote, afterKey);
+  let pos = -1;
+  let len = 0;
+  if (interp !== -1 && interp < limit) {
+    pos = interp;
+    len = 2;
+  }
+  if (attr !== -1 && attr < limit && (pos === -1 || attr < pos)) {
+    pos = attr;
+    len = 1;
+  }
+  return pos !== -1 ? pos + len : afterKey;
 };
 
 /**

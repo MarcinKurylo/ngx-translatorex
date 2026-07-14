@@ -302,13 +302,19 @@ export class LanguageModelTools {
    * workspace for hard-coded strings, returning flat `{ file, line, text }`
    * records. Reads via the file system with bounded concurrency.
    */
-  private static async scan(file: string | undefined, token: vscode.CancellationToken): Promise<{ file: string; line: number; text: string }[]> {
+  private static async scan(file: string | undefined, token: vscode.CancellationToken): Promise<{ file: string; line: number; text: string; category: string; confidence: string }[]> {
     const decoder = new TextDecoder();
     const options = detectionOptions();
-    const findings: { file: string; line: number; text: string }[] = [];
+    const findings: { file: string; line: number; text: string; category: string; confidence: string }[] = [];
     const collect = (uri: vscode.Uri, text: string) => {
       for (const candidate of locateHardcodedStrings(text, options)) {
-        findings.push({ file: vscode.workspace.asRelativePath(uri), line: candidate.line, text: candidate.text });
+        findings.push({
+          file: vscode.workspace.asRelativePath(uri),
+          line: candidate.line,
+          text: candidate.text,
+          category: candidate.category,
+          confidence: candidate.confidence
+        });
       }
     };
     if (file) {

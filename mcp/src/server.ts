@@ -19,7 +19,7 @@ import * as i18n from './i18n';
 const tools = [
   {
     name: 'scanHardcodedStrings',
-    description: 'Scan Angular HTML templates for hard-coded (untranslated) user-facing strings. Call this FIRST to discover what needs extracting. Returns { file, line, text }. Omit `file` to scan the whole project in one call rather than looping per file.',
+    description: 'Scan Angular HTML templates for hard-coded (untranslated) user-facing strings. Call this FIRST to discover what needs extracting. Returns { file, line, text, category, confidence } — category is "text" (a text node) or "attribute"; confidence is "high"/"low". Filter on these to skip likely false positives without opening files. Detection honours the project ignore list and inline `i18n-ignore` markers. Omit `file` to scan the whole project in one call rather than looping per file.',
     inputSchema: { type: 'object', properties: { file: { type: 'string', description: 'Optional project-relative .html path; omit to scan all templates in one call.' } } }
   },
   {

@@ -201,7 +201,7 @@
 				"toolReferenceName": "scanHardcodedStrings",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Scan Angular HTML templates for hard-coded (untranslated) user-facing strings. Returns a JSON array of { file, line, text }. Call this first to discover what needs extracting. Optionally pass a single workspace-relative .html file to scan only that file.",
+				"modelDescription": "Scan Angular HTML templates for hard-coded (untranslated) user-facing strings. Returns a JSON array of { file, line, text, category, confidence } — category is 'text' (a text node) or 'attribute'; confidence is 'high'/'low'. Filter on these to skip likely false positives without opening files. Call this first to discover what needs extracting. Optionally pass a single workspace-relative .html file to scan only that file.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {

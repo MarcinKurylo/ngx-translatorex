@@ -27,7 +27,22 @@ const PLACEHOLDER = process.env.NGX_PLACEHOLDER || '[TODO] translation not imple
 const SORT_ON_SAVE = process.env.NGX_SORT_ON_SAVE === 'true';
 
 const EXCLUDED_DIRS = new Set(['node_modules', 'dist', '.angular', 'out', 'coverage', '.git']);
-const DETECTION = { minLength: 2, ignore: [] as string[] };
+
+/** Comma-separated env value → trimmed, non-empty list. */
+const parseList = (value: string | undefined): string[] =>
+  value ? value.split(',').map((entry) => entry.trim()).filter(Boolean) : [];
+
+/**
+ * Detection tuning, configurable so the MCP surface matches the extension's
+ * settings instead of hardcoding defaults:
+ *  - `NGX_HARDCODED_MIN_LENGTH`  minimum trimmed length (default `2`)
+ *  - `NGX_HARDCODED_IGNORE`      comma-separated literal/`*`-glob patterns to skip
+ * The inline `i18n-ignore` marker is honoured by the detector regardless.
+ */
+const DETECTION = {
+  minLength: process.env.NGX_HARDCODED_MIN_LENGTH ? Number(process.env.NGX_HARDCODED_MIN_LENGTH) : 2,
+  ignore: parseList(process.env.NGX_HARDCODED_IGNORE)
+};
 
 const languageFile = (language: string) => path.join(I18N_DIR, `${language}.json`);
 
@@ -74,15 +89,21 @@ const listTemplates = (): string[] => walk(['.html']);
 const listSourceFiles = (): string[] => walk(['.html', '.ts']);
 
 /** Scans one template (relative path) or all templates for hard-coded strings. */
-export const scan = (file?: string): { file: string; line: number; text: string }[] => {
+export const scan = (file?: string): { file: string; line: number; text: string; category: string; confidence: string }[] => {
   const files = file ? [path.resolve(PROJECT_DIR, file)] : listTemplates();
-  const findings: { file: string; line: number; text: string }[] = [];
+  const findings: { file: string; line: number; text: string; category: string; confidence: string }[] = [];
   for (const abs of files) {
     if (!fs.existsSync(abs)) {
       continue;
     }
     for (const candidate of locateHardcodedStrings(fs.readFileSync(abs, 'utf8'), DETECTION)) {
-      findings.push({ file: path.relative(PROJECT_DIR, abs), line: candidate.line, text: candidate.text });
+      findings.push({
+        file: path.relative(PROJECT_DIR, abs),
+        line: candidate.line,
+        text: candidate.text,
+        category: candidate.category,
+        confidence: candidate.confidence
+      });
     }
   }
   return findings;

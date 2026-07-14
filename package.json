@@ -2,7 +2,7 @@
   "name": "ngx-translatorex",
 	"displayName": "ngx-translatorex",
 	"description": "Angular ngx-translate toolkit: one-shortcut extraction, multi-language sync, missing-key diagnostics, go-to-definition, key rename/delete, and hard-coded string detection.",
-	"version": "0.5.1",
+	"version": "0.6.0",
 	"publisher": "marcinex",
 	"license": "MIT",
 	"icon": "images/icon.png",

@@ -2,7 +2,7 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
-## [Unreleased]
+## [0.6.0]
 
 - Key usage CodeLens: a `used N×` (or `unused`) lens above every key in the i18n
   JSON files, click-through to a peek of the usages across templates and

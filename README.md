@@ -39,6 +39,7 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 - Automatic cache refresh via a file watcher when the i18n file changes outside the editor.
 - One-click recursive JSON sort.
 - Per-language translation coverage in the status bar, click-through to the report.
+- "used N×" CodeLens above each i18n key, click-through to its usages (or flagged unused).
 
 See [`README.marketplace.md`](README.marketplace.md) for the full usage guide,
 settings and commands.
@@ -52,10 +53,11 @@ settings and commands.
 - `src/commands.ts`, `src/hoverProviders.ts`, `src/completionProviders.ts`,
   `src/definitionProviders.ts`, `src/diagnosticsProvider.ts`,
   `src/hardcodedStringsProvider.ts`, `src/inlineTranslationDecorations.ts`,
-  `src/translationCoverageStatusBar.ts` — the contributed commands and providers
-  (missing-key diagnostics, go-to-definition, the opt-in hard-coded-string hints
-  with their extract/ignore quick fixes, the inline translation-value previews,
-  and the coverage status-bar item).
+  `src/translationCoverageStatusBar.ts`, `src/keyReferenceCodeLens.ts` — the
+  contributed commands and providers (missing-key diagnostics, go-to-definition,
+  the opt-in hard-coded-string hints with their extract/ignore quick fixes, the
+  inline translation-value previews, the coverage status-bar item, and the
+  usage-count CodeLens).
 - `src/utils/diagnosticsUtils.ts` — pure, `vscode`-free detection of
   translate-key references in HTML/TS. Unit-tested directly.
 - `src/utils/hardcodedStringUtils.ts` — pure, `vscode`-free detection of

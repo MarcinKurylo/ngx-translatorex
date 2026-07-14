@@ -22,6 +22,7 @@ Turn hard-coded strings in your Angular app into [ngx-translate](https://github.
 - **Automatic refresh** — the extension watches your i18n file and reloads translations when it changes outside the editor (a manual edit, a `git pull`, or a branch switch), so tooltips and completions stay accurate.
 - **One-click JSON sort** — alphabetically sort your translation file, recursively.
 - **Coverage in the status bar** — see per-language progress (`pl 87% · fr 60%`) at a glance; click it for the full report.
+- **Usage CodeLens** — a `used N×` (or `unused`) hint above each key in your i18n files; click it to peek every place the key is used.
 
 ## Getting started
 
@@ -60,6 +61,7 @@ If your selection contains interpolation placeholders, they are extracted and ca
 | `ngx-translatorex.sortKeysOnSave` | Alphabetically sort each i18n file whenever the extension writes to it. | `false` |
 | `ngx-translatorex.inlineTranslations` | Show each key's main-language value inline (greyed) after the key. | `true` |
 | `ngx-translatorex.translationCoverageStatusBar` | Show per-language translation coverage in the status bar. | `true` |
+| `ngx-translatorex.keyUsageCodeLens` | Show a 'used N×' CodeLens above each key in the i18n files. | `true` |
 
 ## Commands
 

@@ -192,6 +192,65 @@ export function findKeyOffsetInJson(text: string, dottedKey: string): number | u
 }
 
 /**
+ * Enumerates every leaf key (one whose value is a string, not a nested object)
+ * in raw JSON source text, with its dotted path and the character offset of the
+ * key name. Walks the JSON structurally, so a value that equals a key name is not
+ * mistaken for one. Assumes object/leaf translation JSON (no arrays).
+ */
+export function listKeyOffsets(text: string): { key: string; offset: number }[] {
+  const keys: { key: string; offset: number }[] = [];
+  const path: string[] = [];
+  let pendingKey: string | undefined;
+  let pendingKeyOffset = -1;
+  let awaitingValue = false;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '"') {
+      const start = i + 1;
+      let j = start;
+      while (j < text.length && text[j] !== '"') {
+        j += text[j] === '\\' ? 2 : 1;
+      }
+      if (awaitingValue) {
+        awaitingValue = false;
+        pendingKey = undefined;
+      } else {
+        pendingKey = text.slice(start, j);
+        pendingKeyOffset = start;
+      }
+      i = j + 1;
+      continue;
+    }
+    if (ch === ':') {
+      awaitingValue = true;
+      let next = i + 1;
+      while (next < text.length && /\s/.test(text[next])) {
+        next++;
+      }
+      if (pendingKey !== undefined && text[next] !== '{') {
+        keys.push({ key: [...path, pendingKey].join('.'), offset: pendingKeyOffset });
+      }
+    } else if (ch === '{') {
+      if (pendingKey !== undefined) {
+        path.push(pendingKey);
+      }
+      pendingKey = undefined;
+      awaitingValue = false;
+    } else if (ch === '}') {
+      path.pop();
+      pendingKey = undefined;
+      awaitingValue = false;
+    } else if (ch === ',') {
+      pendingKey = undefined;
+      awaitingValue = false;
+    }
+    i++;
+  }
+  return keys;
+}
+
+/**
  * Flattens a nested tree into a single-level map keyed by dotted paths
  * (e.g. `{ a: { b: 'x' } }` → `{ 'a.b': 'x' }`). Non-subtree values (strings,
  * and any null/array values present in raw JSON) are treated as leaves.

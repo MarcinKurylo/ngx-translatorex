@@ -3,6 +3,7 @@ import {
   MissingDetail,
   MissingSummary,
   UntranslatedItem,
+  findContainingCandidate,
   planFileExtractions,
   shapeMissingTranslations
 } from '../../utils/i18nToolUtils';
@@ -117,5 +118,21 @@ describe('planFileExtractions', () => {
     ]);
     assert.strictEqual(plan.length, 1); // one occurrence → claimed once
     assert.strictEqual(plan[0].key, 'a.close');
+  });
+});
+
+describe('findContainingCandidate', () => {
+  it('finds the interpolated node a fragment lives inside', () => {
+    const source = '<p>Errors, line {{ error.key }}</p>';
+    const match = findContainingCandidate(source, 'Errors, line');
+    assert.deepStrictEqual(match, { containingText: 'Errors, line {{ error.key }}' });
+  });
+
+  it('returns undefined when an exact candidate exists', () => {
+    assert.strictEqual(findContainingCandidate('<p>Save changes</p>', 'Save changes'), undefined);
+  });
+
+  it('returns undefined when nothing contains the text', () => {
+    assert.strictEqual(findContainingCandidate('<p>Hello world</p>', 'Goodbye'), undefined);
   });
 });

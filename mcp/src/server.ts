@@ -47,7 +47,7 @@ const tools = [
   },
   {
     name: 'extractString',
-    description: 'Single-string variant of extractStrings (prefer extractStrings for more than one). Replace every hard-coded occurrence of an exact text in a template with a translate pipe and add the key (with the text as its main-language value) across all languages. Key naming: meaningful, nested, by feature/area/element, e.g. "checkout.summary.total", "actions.save"; reuse the same key for identical text.',
+    description: 'Single-string variant of extractStrings (prefer extractStrings for more than one). Replace every hard-coded occurrence of an exact text in a template with a translate pipe and add the key (with the text as its main-language value) across all languages. Key naming: meaningful, nested, by feature/area/element, e.g. "checkout.summary.total", "actions.save"; reuse the same key for identical text. When the text is not found exactly, returns partial:true with the containing node when your text is only a fragment of a larger (e.g. interpolated) node — extract that whole node instead.',
     inputSchema: {
       type: 'object',
       properties: {

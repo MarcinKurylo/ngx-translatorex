@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TranslationTree, findUntranslatedKeys, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
-import { planFileExtractions } from '../../src/utils/i18nToolUtils';
+import { findContainingCandidate, planFileExtractions } from '../../src/utils/i18nToolUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
 import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
@@ -114,7 +114,7 @@ export const scan = (file?: string): { file: string; line: number; text: string;
  * `translate` pipe and adds the key across all language files (real value in the
  * main language, placeholder elsewhere).
  */
-export const extract = (file: string, text: string, key: string): { key: string; extracted: number; params?: string[]; message?: string } => {
+export const extract = (file: string, text: string, key: string): { key: string; extracted: number; params?: string[]; message?: string; partial?: boolean; containingText?: string } => {
   const abs = path.resolve(PROJECT_DIR, file);
   if (!fs.existsSync(abs)) {
     return { key, extracted: 0, message: `File not found: ${file}` };
@@ -126,6 +126,10 @@ export const extract = (file: string, text: string, key: string): { key: string;
     .filter((candidate) => candidate.text === text)
     .map((candidate) => ({ index: candidate.index, length: candidate.length, text: value, key, snippet }));
   if (!plan.length) {
+    const containing = findContainingCandidate(source, text, DETECTION);
+    if (containing) {
+      return { key, extracted: 0, partial: true, containingText: containing.containingText, message: `That text is only a fragment of "${containing.containingText}" in ${file}. Extract that whole node instead (its {{ interpolation }} becomes a bound param).` };
+    }
     return { key, extracted: 0, message: `No hard-coded occurrence of that text found in ${file}` };
   }
   fs.writeFileSync(abs, applyExtractionToText(source, plan));

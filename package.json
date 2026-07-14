@@ -218,7 +218,7 @@
 				"toolReferenceName": "extractString",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Extract a hard-coded string from a template into an i18n key: replaces every hard-coded occurrence of the exact text in the file with a `{{ 'key' | translate }}` pipe and writes the key (with the text as its main-language value) across all language files. Choose a meaningful, nested key name (e.g. 'page.title', 'actions.save'). Returns the key and how many occurrences were replaced.",
+				"modelDescription": "Extract a hard-coded string from a template into an i18n key: replaces every hard-coded occurrence of the exact text in the file with a `{{ 'key' | translate }}` pipe and writes the key (with the text as its main-language value) across all language files. Choose a meaningful, nested key name (e.g. 'page.title', 'actions.save'). Returns the key and how many occurrences were replaced; when the text is not found exactly, returns partial:true with the containing node if your text is only a fragment of a larger (e.g. interpolated) node — extract that whole node instead.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {

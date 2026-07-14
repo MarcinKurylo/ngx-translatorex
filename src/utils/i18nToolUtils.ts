@@ -69,6 +69,30 @@ export function planFileExtractions(
   return { plan, outcomes };
 }
 
+/**
+ * When an exact extraction target is not found, looks for a hard-coded candidate
+ * that *contains* the requested text — typically an interpolated node
+ * (`Errors, line {{ error.key }}`) that a plain scan reports whole. Lets the
+ * extract tools answer "not an exact match, but it lives inside this node"
+ * instead of a bare "not found". Returns `undefined` when an exact candidate
+ * exists (so the caller extracts normally) or nothing contains the text.
+ */
+export function findContainingCandidate(
+  source: string,
+  text: string,
+  options: HardcodedStringOptions = {}
+): { containingText: string } | undefined {
+  if (!text) {
+    return undefined;
+  }
+  const candidates = findHardcodedStrings(source, options);
+  if (candidates.some((candidate) => candidate.text === text)) {
+    return undefined;
+  }
+  const containing = candidates.find((candidate) => candidate.text !== text && candidate.text.includes(text));
+  return containing ? { containingText: containing.text } : undefined;
+}
+
 /** One key that still needs translating, with its main-language source text. */
 export interface UntranslatedItem {
   /** Secondary language code the key is missing/placeholder in. */

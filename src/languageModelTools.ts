@@ -6,7 +6,7 @@ import { FileSystemManager } from './utils/fileSystemManager';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation, PlannedExtraction } from './utils/hardcodedStringUtils';
 import { findTranslateKeys } from './utils/diagnosticsUtils';
 import { buildTranslationReport, flattenObject } from './utils/translationUtils';
-import { ListMissingOptions, UntranslatedItem, planFileExtractions, shapeMissingTranslations } from './utils/i18nToolUtils';
+import { ListMissingOptions, UntranslatedItem, findContainingCandidate, planFileExtractions, shapeMissingTranslations } from './utils/i18nToolUtils';
 
 /** Tool names, namespaced under the extension id (must match package.json contributions). */
 const TOOL = {
@@ -94,6 +94,10 @@ export class LanguageModelTools {
           .filter((candidate) => candidate.text === text)
           .map((candidate) => ({ index: candidate.index, length: candidate.length, text: value, key, snippet }));
         if (!plan.length) {
+          const containing = findContainingCandidate(source, text, detectionOptions());
+          if (containing) {
+            return result({ extracted: 0, partial: true, containingText: containing.containingText, message: `That text is only a fragment of “${containing.containingText}” in ${file}. Extract that whole node instead (its {{ interpolation }} becomes a bound param).` });
+          }
           return result({ extracted: 0, message: `No hard-coded occurrence of that exact text found in ${file}` });
         }
         await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(applyExtractionToText(source, plan)));

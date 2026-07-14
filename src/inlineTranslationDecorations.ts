@@ -9,10 +9,14 @@ const SUPPORTED_LANGUAGES = ['html', 'typescript'];
 /** Longest inline preview before it is ellipsised. */
 const MAX_PREVIEW = 40;
 
-/** Collapses whitespace and truncates a translation value for inline display. */
+/**
+ * Collapses whitespace, truncates and wraps a translation value in guillemets
+ * for a quiet, comment-like inline preview that reads apart from the code.
+ */
 const formatPreview = (value: string): string => {
   const clean = value.replace(/\s+/g, ' ').trim();
-  return clean.length > MAX_PREVIEW ? `${clean.slice(0, MAX_PREVIEW - 1)}…` : clean;
+  const trimmed = clean.length > MAX_PREVIEW ? `${clean.slice(0, MAX_PREVIEW - 1)}…` : clean;
+  return `«${trimmed}»`;
 };
 
 /**
@@ -34,10 +38,9 @@ export class InlineTranslationDecorations {
   public static register(): vscode.Disposable[] {
     InlineTranslationDecorations.decorationType = vscode.window.createTextEditorDecorationType({
       after: {
-        color: new vscode.ThemeColor('editorInlayHint.foreground'),
-        backgroundColor: new vscode.ThemeColor('editorInlayHint.background'),
+        color: new vscode.ThemeColor('descriptionForeground'),
         fontStyle: 'italic',
-        margin: '0 0 0 0.6ch'
+        margin: '0 0 0 0.8ch'
       }
     });
     InlineTranslationDecorations.updateAll();

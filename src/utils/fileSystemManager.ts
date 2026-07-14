@@ -176,6 +176,20 @@ export class FileSystemManager {
   }
 
   /**
+   * Deletes several keys from every language file in a single pass, so a bulk
+   * cleanup writes each file at most once.
+   *
+   * @param keys The dotted keys to delete.
+   * @returns `saved` — whether all writes succeeded; `changed` — how many files
+   * were actually modified.
+   */
+  public static async deleteTranslations(keys: string[]): Promise<{ saved: boolean; changed: number }> {
+    return FileSystemManager.mutateAllLanguages((tree) =>
+      keys.reduce((changed, key) => deleteKey(tree, key) || changed, false)
+    );
+  }
+
+  /**
    * Applies a mutation to every language file in the i18n folder, writing back
    * only the files the mutation actually changed.
    *

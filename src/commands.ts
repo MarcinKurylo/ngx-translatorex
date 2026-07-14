@@ -8,6 +8,8 @@ import { NotificationManager } from './utils/notificationManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
 import { ExtensionUtils } from './utils/extensionUtils';
+import { planReferenceRename } from './utils/diagnosticsUtils';
+import { buildUsageIndex, positionAt } from './usageIndex';
 import {
   LanguageReport,
   Mode,
@@ -234,8 +236,48 @@ export class Commands {
         return;
       }
       await FileSystemManager.refreshCache();
-      NotificationManager.showInfoMessage(`Renamed '${oldKey}' to '${newKey}' in ${changed} file(s)`);
+      const { files, refs } = await Commands.renameReferences(oldKey, newKey);
+      const suffix = refs ? `; updated ${refs} reference(s) in ${files} file(s)` : '';
+      NotificationManager.showInfoMessage(`Renamed '${oldKey}' to '${newKey}' in ${changed} file(s)${suffix}`);
     });
+  }
+
+  /**
+   * Rewrites every `translate` reference to `oldKey` (and any key nested under it)
+   * so it points at `newKey`, across the workspace's templates and components, in
+   * a single undoable workspace edit — turning the JSON rename into a real
+   * refactor.
+   *
+   * @returns How many references were updated and in how many files.
+   */
+  private static async renameReferences(oldKey: string, newKey: string): Promise<{ files: number; refs: number }> {
+    const uris = await vscode.workspace.findFiles('**/*.{html,ts}', HTML_SCAN_EXCLUDE);
+    const decoder = new TextDecoder();
+    const edit = new vscode.WorkspaceEdit();
+    let files = 0;
+    let refs = 0;
+    for (const uri of uris) {
+      let text: string;
+      try {
+        text = decoder.decode(await vscode.workspace.fs.readFile(uri));
+      } catch {
+        continue;
+      }
+      const languageId = uri.path.endsWith('.ts') ? 'typescript' : 'html';
+      const edits = planReferenceRename(text, languageId, oldKey, newKey);
+      if (!edits.length) {
+        continue;
+      }
+      files++;
+      refs += edits.length;
+      for (const { index, length, replacement } of edits) {
+        edit.replace(uri, new vscode.Range(positionAt(text, index), positionAt(text, index + length)), replacement);
+      }
+    }
+    if (refs) {
+      await vscode.workspace.applyEdit(edit);
+    }
+    return { files, refs };
   }
 
   /**
@@ -265,6 +307,52 @@ export class Commands {
       }
       await FileSystemManager.refreshCache();
       NotificationManager.showInfoMessage(`Deleted '${targetKey}' from ${changed} file(s)`);
+    });
+  }
+
+  /**
+   * Registers the command that finds i18n keys referenced nowhere in the
+   * workspace's templates/components and offers to bulk-delete them. Keys built
+   * dynamically cannot be detected, so the picker starts with every unused key
+   * selected but leaves the final choice — and a modal confirmation — to the user.
+   *
+   * @returns The command disposable, to be added to the extension subscriptions.
+   */
+  public static registerCleanUnusedKeys(): vscode.Disposable {
+    return vscode.commands.registerCommand(`${EXTENSION_IDENTIFIER}.${ExtensionCommands.CLEAN_UNUSED_KEYS}`, async () => {
+      const index = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Scanning for unused i18n keys…' },
+        () => buildUsageIndex()
+      );
+      const unused = Object.keys(FileSystemManager.cache ?? {}).filter((key) => !index.get(key)?.length);
+      if (!unused.length) {
+        return NotificationManager.showInfoMessage('No unused i18n keys found');
+      }
+      const picks = await vscode.window.showQuickPick(
+        unused.map((key) => ({ label: key, description: FileSystemManager.cache[key], picked: true })),
+        {
+          canPickMany: true,
+          title: `${unused.length} unused i18n key(s) — select which to delete`,
+          placeHolder: 'Referenced nowhere in templates/components (dynamically built keys can’t be detected)'
+        }
+      );
+      if (!picks?.length) {
+        return;
+      }
+      const confirm = await vscode.window.showWarningMessage(
+        `Delete ${picks.length} unused i18n key(s) from all language files?`,
+        { modal: true },
+        'Delete'
+      );
+      if (confirm !== 'Delete') {
+        return;
+      }
+      const { saved, changed } = await FileSystemManager.deleteTranslations(picks.map((pick) => pick.label));
+      if (!saved) {
+        return;
+      }
+      await FileSystemManager.refreshCache();
+      NotificationManager.showInfoMessage(`Deleted ${picks.length} unused key(s) from ${changed} file(s)`);
     });
   }
 

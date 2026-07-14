@@ -89,6 +89,10 @@
 				"command": "ngx-translatorex.extractTemplateStrings",
 				"title": "ngx-translatorex: Extract all hard-coded strings in this template",
 				"enablement": "editorLangId == html"
+			},
+			{
+				"command": "ngx-translatorex.cleanUnusedKeys",
+				"title": "ngx-translatorex: Clean unused i18n keys"
 			}
 		],
 		"keybindings": [

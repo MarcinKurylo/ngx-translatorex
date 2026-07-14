@@ -61,7 +61,8 @@ export const activate = async (context: vscode.ExtensionContext) => {
 		Commands.registerIgnoreHardcodedString(),
 		Commands.registerShowHardcodedStringsReport(),
 		Commands.registerTranslatePlaceholders(),
-		Commands.registerExtractTemplateStrings()
+		Commands.registerExtractTemplateStrings(),
+		Commands.registerCleanUnusedKeys()
 	];
 
 	const hoverProviders = [

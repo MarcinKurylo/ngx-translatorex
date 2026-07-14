@@ -36,25 +36,26 @@ full pass without writing the instructions yourself.
 
 ## Quick start
 
-```bash
-# 1. Build the server (from the repo root — the build pulls in ../src/utils)
-cd mcp
-npm install
-npm run build            # → dist/mcp/src/server.js
-```
+Published on npm as [`ngx-translatorex-mcp`](https://www.npmjs.com/package/ngx-translatorex-mcp),
+so there is nothing to clone or build — the agent runs it via `npx`.
 
 ```bash
-# 2. Register it with your agent, pointed at your project
+# 1. Register it with your agent, pointed at your project
 claude mcp add ngx-translatorex \
   --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
-  -- node /abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js
+  -- npx -y ngx-translatorex-mcp
 ```
 
 ```text
-# 3. Ask the agent (or run the localize-project prompt)
+# 2. Ask the agent (or run the localize-project prompt)
 Localize this project: scan for hard-coded strings, extract them into sensible
 i18n keys, then translate everything that's missing into every language.
 ```
+
+> Currently published as a **preview** release. `npx -y ngx-translatorex-mcp`
+> resolves it while it is the newest version; once a stable release exists, pin
+> the channel with `ngx-translatorex-mcp@preview` if you specifically want
+> prereleases. Prefer running from source? See [Build from source](#build-from-source).
 
 ## Configuration
 
@@ -78,7 +79,7 @@ The server is pointed at a project via environment variables. Only
 ```bash
 claude mcp add ngx-translatorex \
   --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
-  -- node /abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js
+  -- npx -y ngx-translatorex-mcp
 ```
 
 Verify with `claude mcp list` (the server should report as connected), or ask
@@ -90,8 +91,8 @@ Claude to "list your ngx-translatorex tools".
 {
   "mcpServers": {
     "ngx-translatorex": {
-      "command": "node",
-      "args": ["/abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js"],
+      "command": "npx",
+      "args": ["-y", "ngx-translatorex-mcp"],
       "env": {
         "NGX_PROJECT_DIR": "/abs/path/to/your/angular/project",
         "NGX_MAIN_LANG": "en"
@@ -103,6 +104,18 @@ Claude to "list your ngx-translatorex tools".
 
 Restart Claude Desktop after editing the config; the server then appears under
 the tools (plug) icon.
+
+### Build from source
+
+Prefer running from a checkout (contributing, or pinning to unreleased code)?
+Build once — from the repo root, since the build pulls in `../src/utils`:
+
+```bash
+cd mcp && npm install && npm run build   # → dist/mcp/src/server.js
+```
+
+Then register `node /abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js`
+instead of the `npx` command above.
 
 ## Example prompts
 
@@ -158,21 +171,22 @@ To share across macOS user profiles on the same machine, drop the tarball under
 are not reachable from another profile, so an absolute path into another user's
 home will not work.
 
-## Publishing to npm (makes it public)
+## Releasing to npm
 
-The package is publish-ready: a `prepare` hook rebuilds `dist/` before every
-publish, the `files`/`bin`/`engines`/metadata are set, and the tarball has been
-verified to install and run from a clean directory.
+Published as [`ngx-translatorex-mcp`](https://www.npmjs.com/package/ngx-translatorex-mcp)
+(currently `0.1.0-preview.0` under the `preview` dist-tag). Releases are automated.
 
 ### Automated (recommended) — push a tag
 
 The `Publish MCP` workflow (`.github/workflows/publish-mcp.yml`) publishes on any
 `mcp-v*` tag. It runs the unit tests, checks the tag matches `mcp/package.json`,
 builds, and publishes — choosing the **dist-tag from the version**: a prerelease
-(e.g. `0.1.0-preview.0`) goes to `preview`, a clean version to `latest`.
+(e.g. `0.1.0-preview.1`) goes to `preview`, a clean version (e.g. `0.1.0`) to
+`latest`.
 
-One-time setup: create an npm **automation token** and add it as a repository
-secret named `NPM_TOKEN`. Then, to release:
+One-time setup (already done for this repo): create an npm **automation token**
+(or a granular token with 2FA bypass) and add it as a repository secret named
+`NPM_TOKEN`. Then, to release:
 
 ```bash
 # version in mcp/package.json must match the tag

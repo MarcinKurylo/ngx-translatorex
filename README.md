@@ -47,16 +47,15 @@ settings and commands.
 ## Using it with an AI agent (MCP)
 
 Beyond the in-editor Copilot agent tools, the same i18n operations ship as a
-standalone [Model Context Protocol](https://modelcontextprotocol.io) server, so
-Claude Desktop / Claude Code (or any MCP agent) can drive the whole
-scan → extract → translate flow. Build [`mcp/`](mcp/README.md) once and register
-it:
+standalone [Model Context Protocol](https://modelcontextprotocol.io) server
+([`ngx-translatorex-mcp`](https://www.npmjs.com/package/ngx-translatorex-mcp) on
+npm), so Claude Desktop / Claude Code (or any MCP agent) can drive the whole
+scan → extract → translate flow. Register it — no clone, no build:
 
 ```bash
-cd mcp && npm install && npm run build
 claude mcp add ngx-translatorex \
   --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
-  -- node /abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js
+  -- npx -y ngx-translatorex-mcp
 ```
 
 See [`mcp/README.md`](mcp/README.md) for configuration and example prompts.

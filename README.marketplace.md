@@ -53,17 +53,14 @@ missing — in two ways:
 
 - **Inside VS Code** — in Copilot's agent mode the tools are already available;
   just ask (e.g. *"localize this template"*). Nothing extra to install.
-- **Any MCP agent (Claude Desktop, Claude Code, …)** — a standalone
-  [Model Context Protocol](https://modelcontextprotocol.io) server ships in the
-  repo. Build it once and point your agent at your project:
+- **Any MCP agent (Claude Desktop, Claude Code, …)** — the same operations ship
+  as a standalone [Model Context Protocol](https://modelcontextprotocol.io)
+  server, published on npm. Point your agent at your project — no clone, no build:
 
   ```bash
-  git clone https://github.com/MarcinKurylo/ngx-translatorex
-  cd ngx-translatorex/mcp && npm install && npm run build
-
   claude mcp add ngx-translatorex \
     --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
-    -- node /abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js
+    -- npx -y ngx-translatorex-mcp
   ```
 
   Then just ask, e.g. *"scan my templates for hard-coded strings, extract them

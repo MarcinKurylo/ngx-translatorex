@@ -44,6 +44,22 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 See [`README.marketplace.md`](README.marketplace.md) for the full usage guide,
 settings and commands.
 
+## Using it with an AI agent (MCP)
+
+Beyond the in-editor Copilot agent tools, the same i18n operations ship as a
+standalone [Model Context Protocol](https://modelcontextprotocol.io) server
+([`ngx-translatorex-mcp`](https://www.npmjs.com/package/ngx-translatorex-mcp) on
+npm), so Claude Desktop / Claude Code (or any MCP agent) can drive the whole
+scan → extract → translate flow. Register it — no clone, no build:
+
+```bash
+claude mcp add ngx-translatorex \
+  --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
+  -- npx -y ngx-translatorex-mcp
+```
+
+See [`mcp/README.md`](mcp/README.md) for configuration and example prompts.
+
 ## Architecture
 
 - `src/utils/translationUtils.ts` — pure, `vscode`-free translation-tree logic
@@ -117,6 +133,20 @@ The `Release` workflow runs the tests, packages the extension (with the
 Marketplace readme), publishes it to the VS Code Marketplace using the `VSCE_PAT`
 repository secret, and attaches the `.vsix` to a GitHub Release. The tag name
 should match the `package.json` version, which is the version actually published.
+
+### The MCP server (npm)
+
+The standalone [`mcp/`](mcp/README.md) package publishes to npm separately. The
+`Publish MCP` workflow runs on an `mcp-v*` tag: it runs the unit tests, checks the
+tag matches `mcp/package.json`, builds, and publishes with a dist-tag derived from
+the version — a prerelease (e.g. `0.1.0-preview.1`) goes to `preview`, a clean
+version to `latest`. It uses the `NPM_TOKEN` repository secret (an npm automation
+token, or a granular token with 2FA bypass).
+
+```bash
+# bump mcp/package.json (and mcp/package-lock.json) to the target version first
+git tag mcp-v0.1.0-preview.1 && git push origin mcp-v0.1.0-preview.1
+```
 
 ## License
 

@@ -1,7 +1,7 @@
 {
   "name": "ngx-translatorex-mcp",
-  "version": "0.1.0-preview.0",
-  "description": "MCP server exposing ngx-translatorex i18n operations (scan / extract / list-missing / set-translations) to any MCP-capable agent, e.g. Claude.",
+  "version": "0.1.0-preview.1",
+  "description": "MCP server to localize Angular / ngx-translate apps with an AI agent (Claude, Copilot): scan hard-coded strings, extract i18n keys, and translate — from any MCP client.",
   "license": "MIT",
   "author": "Marcin Kuryło",
   "homepage": "https://github.com/MarcinKurylo/ngx-translatorex/tree/main/mcp#readme",
@@ -17,11 +17,17 @@
     "mcp",
     "model-context-protocol",
     "i18n",
+    "internationalization",
     "ngx-translate",
     "angular",
     "translation",
     "localization",
-    "claude"
+    "translate",
+    "ai",
+    "agent",
+    "claude",
+    "copilot",
+    "llm"
   ],
   "engines": {
     "node": ">=18"

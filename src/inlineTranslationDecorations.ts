@@ -52,6 +52,10 @@ export class InlineTranslationDecorations {
       after: {
         color: new vscode.ThemeColor('editorInlayHint.foreground'),
         backgroundColor: new vscode.ThemeColor('editorInlayHint.background'),
+        // A hairline border in the text colour turns the faint fill into a
+        // defined "outlined chip" — subtle, but more visible than the fill alone.
+        border: '1px solid',
+        borderColor: new vscode.ThemeColor('editorInlayHint.foreground'),
         fontWeight: '500',
         margin: '0 0 0 0.8ch',
         // `textDecoration` is the only hook for extra CSS on a decoration

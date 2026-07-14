@@ -2,7 +2,7 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
-## [Unreleased]
+## [0.7.0]
 
 - Rename i18n key now updates its usages too: renaming a key (or a whole
   namespace) rewrites every `translate` pipe / `TranslateService` reference to it

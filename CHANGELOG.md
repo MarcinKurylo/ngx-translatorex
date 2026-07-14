@@ -2,6 +2,28 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [0.8.0]
+
+- Agent tooling is now efficient at scale — the in-editor Language Model tools and
+  the standalone MCP server share the same engine, and both gained:
+  - New **`extractStrings`** batch tool: extract many hard-coded strings in a
+    single call, across one or many templates (omit a file list to apply a string
+    everywhere), instead of one call per string.
+  - **`listMissingTranslations`** now defaults to a compact summary (per-language
+    and per-prefix counts) and supports `prefix` / `language` / `limit` / `offset`
+    detail, so a large catalogue no longer floods the agent with every key at once.
+  - New **`seedMissingTranslations`** tool and a `dryRun` preview on
+    `setTranslations`.
+  - The hard-coded scan now tags each finding with a `category` (text node vs
+    attribute) and `confidence` (high/low), so an agent can skip likely false
+    positives without opening files.
+  - `extractString` now reports a `partial` match when the text is only a fragment
+    of a larger (e.g. interpolated) node, instead of a bare "not found".
+- The standalone MCP server is now published on npm as
+  [`ngx-translatorex-mcp`](https://www.npmjs.com/package/ngx-translatorex-mcp):
+  connect Claude Desktop / Claude Code (or any MCP agent) with
+  `npx -y ngx-translatorex-mcp` — no clone or build.
+
 ## [0.7.0]
 
 - Rename i18n key now updates its usages too: renaming a key (or a whole

@@ -14,11 +14,17 @@ from an external agent.
 
 | Tool | Purpose |
 | --- | --- |
-| `scanHardcodedStrings` | Find hard-coded strings in HTML templates → `{ file, line, text }[]` |
-| `extractString` | Replace a string with a `translate` pipe and add its key across languages (interpolated text is bound as params) |
-| `listMissingTranslations` | Per language, keys missing/untranslated with their source text |
+| `scanHardcodedStrings` | Find hard-coded strings in HTML templates → `{ file, line, text, category, confidence }[]` |
+| `extractStrings` | Batch: extract many strings at once; omit an item's `files` to apply to every template |
+| `extractString` | Replace one string with a `translate` pipe and add its key across languages (interpolated text is bound as params; reports `partial` when your text is only a fragment of a larger node) |
+| `listMissingTranslations` | Keys missing/untranslated with their source; `summary` (default) returns counts + per-prefix histogram, `summary:false` + `prefix`/`language`/`limit`/`offset` returns detail |
 | `listUndefinedKeys` | Keys referenced in code but defined in no i18n file (dead references) |
-| `setTranslations` | Write many translations at once (values that drop a `{{ param }}` are skipped) |
+| `setTranslations` | Write many translations at once (values that drop a `{{ param }}` are skipped; `dryRun` previews) |
+| `seedMissingTranslations` | Fill still-missing keys with the placeholder or a copy of the source (`copySource`); `dryRun` previews |
+
+A `localize-project` prompt is also exposed (MCP `prompts` capability) — a ready-made
+workflow that walks the agent through scan → batch-extract → summary-first
+listMissing → batched setTranslations.
 
 ## Build
 
@@ -39,6 +45,8 @@ The server is pointed at a project via environment variables:
 | `NGX_MAIN_LANG` | `en` | Main language code |
 | `NGX_PLACEHOLDER` | `[TODO] translation not implemented` | Untranslated-key placeholder |
 | `NGX_SORT_ON_SAVE` | `false` | Set to `true` to alphabetically sort each i18n file on write |
+| `NGX_HARDCODED_MIN_LENGTH` | `2` | Minimum trimmed length for a scanned hard-coded string |
+| `NGX_HARDCODED_IGNORE` | (none) | Comma-separated literal/`*`-glob patterns to skip during the scan |
 
 ### Claude Desktop (`claude_desktop_config.json`)
 
@@ -70,8 +78,9 @@ claude mcp add ngx-translatorex \
 > Scan my templates for hard-coded strings, extract them into sensible i18n keys,
 > and translate everything that's missing into all languages.
 
-The agent will call `scanHardcodedStrings` → `extractString` (per string, naming
-keys itself) → `listMissingTranslations` → `setTranslations`.
+The agent will call `scanHardcodedStrings` → `extractStrings` (batched, naming
+keys itself) → `listMissingTranslations` (summary first) → `setTranslations`
+(batched). The `localize-project` prompt spells this workflow out.
 
 ## Distributing without a registry (private dogfooding)
 

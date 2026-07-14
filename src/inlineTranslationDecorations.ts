@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { FileSystemManager } from './utils/fileSystemManager';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
-import { findTranslateKeys } from './utils/diagnosticsUtils';
+import { findTranslateKeys, TranslateKeyReference } from './utils/diagnosticsUtils';
 
 /** Languages whose `translate` key references are annotated inline. */
 const SUPPORTED_LANGUAGES = ['html', 'typescript'];
@@ -9,10 +9,48 @@ const SUPPORTED_LANGUAGES = ['html', 'typescript'];
 /** Longest inline preview before it is ellipsised. */
 const MAX_PREVIEW = 40;
 
-/** Collapses whitespace and truncates a translation value for inline display. */
+/** Collapses whitespace and truncates a translation value for the badge. */
 const formatPreview = (value: string): string => {
   const clean = value.replace(/\s+/g, ' ').trim();
   return clean.length > MAX_PREVIEW ? `${clean.slice(0, MAX_PREVIEW - 1)}…` : clean;
+};
+
+/**
+ * Offset at which to anchor the badge: the end of this reference's translate
+ * expression, so the badge sits after the whole thing rather than mid-expression.
+ *
+ * For TypeScript that is the call's closing `)`. For HTML it is whichever comes
+ * first on the line — the interpolation's `}}` (`{{ 'k' | translate }}`) or the
+ * attribute value's closing quote (`[title]="'k' | translate"`): a property
+ * binding has no `}}`, so without the quote bound the badge would wrongly jump
+ * to the next interpolation later on the line. Falls back to just after the key
+ * when no closer is found on the line.
+ */
+const badgeOffset = (text: string, reference: TranslateKeyReference, languageId: string): number => {
+  const afterKey = reference.index + reference.length + 1; // past the key's closing quote
+  const newline = text.indexOf('\n', afterKey);
+  const limit = newline === -1 ? text.length : newline;
+
+  if (languageId !== 'html') {
+    const paren = text.indexOf(')', afterKey);
+    return paren !== -1 && paren < limit ? paren + 1 : afterKey;
+  }
+
+  // The attribute delimiter is the quote the key is *not* wrapped in.
+  const attrQuote = text[reference.index - 1] === '"' ? "'" : '"';
+  const interp = text.indexOf('}}', afterKey);
+  const attr = text.indexOf(attrQuote, afterKey);
+  let pos = -1;
+  let len = 0;
+  if (interp !== -1 && interp < limit) {
+    pos = interp;
+    len = 2;
+  }
+  if (attr !== -1 && attr < limit && (pos === -1 || attr < pos)) {
+    pos = attr;
+    len = 1;
+  }
+  return pos !== -1 ? pos + len : afterKey;
 };
 
 /**
@@ -36,8 +74,16 @@ export class InlineTranslationDecorations {
       after: {
         color: new vscode.ThemeColor('editorInlayHint.foreground'),
         backgroundColor: new vscode.ThemeColor('editorInlayHint.background'),
-        fontStyle: 'italic',
-        margin: '0 0 0 0.6ch'
+        // A hairline border in the text colour turns the faint fill into a
+        // defined "outlined chip" — subtle, but more visible than the fill alone.
+        border: '1px solid',
+        borderColor: new vscode.ThemeColor('editorInlayHint.foreground'),
+        fontWeight: '500',
+        margin: '0 0 0 0.8ch',
+        // `textDecoration` is the only hook for extra CSS on a decoration
+        // attachment — used here to give the badge padding, rounded corners and a
+        // slightly smaller size so it reads as a deliberate chip, not a raw pill.
+        textDecoration: 'none; border-radius: 4px; padding: 0 6px; font-size: 90%;'
       }
     });
     InlineTranslationDecorations.updateAll();
@@ -83,14 +129,15 @@ export class InlineTranslationDecorations {
       return;
     }
     const document = editor.document;
+    const text = document.getText();
     const decorations: vscode.DecorationOptions[] = [];
-    for (const reference of findTranslateKeys(document.getText(), document.languageId)) {
+    for (const reference of findTranslateKeys(text, document.languageId)) {
       const value = FileSystemManager.cache?.[reference.key];
       if (typeof value !== 'string') {
         continue;
       }
-      // Place the preview just after the closing quote of the key.
-      const position = document.positionAt(reference.index + reference.length + 1);
+      // Place the badge after the whole translate expression (past `}}` / `)`).
+      const position = document.positionAt(badgeOffset(text, reference, document.languageId));
       decorations.push({
         range: new vscode.Range(position, position),
         renderOptions: { after: { contentText: formatPreview(value) } }

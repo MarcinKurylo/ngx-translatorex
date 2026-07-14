@@ -158,27 +158,35 @@ To share across macOS user profiles on the same machine, drop the tarball under
 are not reachable from another profile, so an absolute path into another user's
 home will not work.
 
-## Publishing to npm (future — makes it public)
+## Publishing to npm (makes it public)
 
-Not published yet. When promoting the "works with any agent" angle:
+The package is publish-ready: a `prepare` hook rebuilds `dist/` before every
+publish, the `files`/`bin`/`engines`/metadata are set, and the tarball has been
+verified to install and run from a clean directory. Publishing is a manual,
+irreversible step — run it yourself with your own npm auth. From a **full
+checkout** (the build pulls in `../src/utils/*` via `tsconfig` `rootDir: ".."`,
+so it can't run from the `mcp/` folder alone):
 
-1. **Add a build-on-install hook** so registry/git consumers get a fresh `dist/`:
-   ```jsonc
-   // package.json
-   "scripts": { "build": "tsc -p ./", "prepare": "npm run build" }
-   ```
-   (`prepare` runs on `npm install` from git and before `npm publish`. Consumers
-   of a published tarball already get the prebuilt `dist/` via the `files` field,
-   but `prepare` keeps git installs and publishes self-building. Note the build
-   pulls in `../src/utils/*` via `tsconfig` `rootDir: ".."`, so it must run from a
-   full checkout, not the `mcp/` folder alone.)
-2. **Public release:** `npm publish` (unscoped `ngx-translatorex-mcp`) →
-   `npx -y ngx-translatorex-mcp` works for everyone, one-line config, still
-   per-project `NGX_PROJECT_DIR`.
-3. **Reserve the name without a `latest` yet:** `npm publish --tag preview` with a
-   `-preview` version (e.g. `0.1.0-preview`). It is still **public**, but only
-   installs on request (`ngx-translatorex-mcp@preview`) and never as the default
-   `latest`; prerelease versions are also excluded from `^`/`~` ranges.
-4. **Truly private** is a paid npm feature (`--access restricted`, scoped name)
-   and breaks `npx` for anyone without access — so it defeats the "any agent"
-   goal. For private dogfooding use the tarball above instead.
+```bash
+cd mcp
+npm publish                    # public latest → npx -y ngx-translatorex-mcp
+```
+
+Once published, the client config collapses to one line — no local build, no
+absolute path:
+
+```bash
+claude mcp add ngx-translatorex \
+  --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
+  -- npx -y ngx-translatorex-mcp
+```
+
+Alternatives:
+
+- **Reserve the name without a `latest` yet** — bump to a `-preview` version
+  (e.g. `0.1.0-preview`) and `npm publish --tag preview`. Still **public**, but
+  only installs on request (`ngx-translatorex-mcp@preview`), never as the default
+  `latest`, and prerelease versions are excluded from `^`/`~` ranges.
+- **Truly private** is a paid npm feature (`--access restricted`, scoped name)
+  and breaks `npx` for anyone without access — defeating the "any agent" goal.
+  For private dogfooding use the tarball route above instead.

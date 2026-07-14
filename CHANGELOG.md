@@ -2,6 +2,20 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [Unreleased]
+
+- Rename i18n key now updates its usages too: renaming a key (or a whole
+  namespace) rewrites every `translate` pipe / `TranslateService` reference to it
+  across the workspace's templates and components in one undoable edit — turning
+  the rename from a data edit into a real refactor. A namespace rename
+  (`home` → `landing`) rewrites `home.title` to `landing.title`. The result
+  message reports how many references in how many files were updated.
+- New command **Clean unused i18n keys**: finds keys defined in the language
+  files but referenced nowhere in the workspace, and offers to bulk-delete them.
+  Every unused key starts selected in a multi-pick (with its value shown) so you
+  can review before a single modal confirmation. Dynamically built keys can't be
+  detected, so they may show as unused — the review step guards against that.
+
 ## [0.6.1]
 
 - Inline translation preview polish: the greyed value after each

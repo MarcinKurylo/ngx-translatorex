@@ -1,5 +1,14 @@
 import * as assert from 'assert';
-import { findTranslateKeys } from '../../utils/diagnosticsUtils';
+import { findTranslateKeys, planReferenceRename } from '../../utils/diagnosticsUtils';
+
+/** Applies planned edits to text, right-to-left so earlier offsets stay valid. */
+const applyEdits = (text: string, edits: { index: number; length: number; replacement: string }[]): string => {
+  let out = text;
+  for (const { index, length, replacement } of [...edits].sort((a, b) => b.index - a.index)) {
+    out = out.slice(0, index) + replacement + out.slice(index + length);
+  }
+  return out;
+};
 
 describe('findTranslateKeys (html)', () => {
   it('finds a key in a translate pipe interpolation', () => {
@@ -56,5 +65,41 @@ describe('findTranslateKeys (typescript)', () => {
 describe('findTranslateKeys (other languages)', () => {
   it('returns nothing for unsupported languages', () => {
     assert.deepStrictEqual(findTranslateKeys(`'home.title' | translate`, 'json'), []);
+  });
+});
+
+describe('planReferenceRename', () => {
+  it('rewrites an exact-key reference', () => {
+    const text = `<p>{{ 'home.title' | translate }}</p>`;
+    assert.strictEqual(
+      applyEdits(text, planReferenceRename(text, 'html', 'home.title', 'landing.header')),
+      `<p>{{ 'landing.header' | translate }}</p>`
+    );
+  });
+
+  it('rewrites nested keys when a namespace is renamed', () => {
+    const text = `{{ 'home.title' | translate }} {{ 'home.sub' | translate }}`;
+    assert.strictEqual(
+      applyEdits(text, planReferenceRename(text, 'html', 'home', 'landing')),
+      `{{ 'landing.title' | translate }} {{ 'landing.sub' | translate }}`
+    );
+  });
+
+  it('does not touch keys that merely share a prefix segment', () => {
+    const text = `{{ 'home.title' | translate }} {{ 'homepage.title' | translate }}`;
+    const edits = planReferenceRename(text, 'html', 'home', 'landing');
+    assert.deepStrictEqual(edits.map((e) => e.replacement), ['landing.title']);
+  });
+
+  it('rewrites TypeScript references', () => {
+    const text = `this.translate.instant('home.title')`;
+    assert.strictEqual(
+      applyEdits(text, planReferenceRename(text, 'typescript', 'home.title', 'landing.header')),
+      `this.translate.instant('landing.header')`
+    );
+  });
+
+  it('returns no edits when the key is not referenced', () => {
+    assert.deepStrictEqual(planReferenceRename(`{{ 'a.b' | translate }}`, 'html', 'x.y', 'z'), []);
   });
 });

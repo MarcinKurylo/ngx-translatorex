@@ -35,5 +35,6 @@ export enum ExtensionCommands  {
   SHOW_HARDCODED_STRINGS_REPORT = 'showHardcodedStringsReport',
   TRANSLATE_PLACEHOLDERS = 'translatePlaceholders',
   EXTRACT_TEMPLATE_STRINGS = 'extractTemplateStrings',
-  SHOW_KEY_REFERENCES = 'showKeyReferences'
+  SHOW_KEY_REFERENCES = 'showKeyReferences',
+  CLEAN_UNUSED_KEYS = 'cleanUnusedKeys'
 }

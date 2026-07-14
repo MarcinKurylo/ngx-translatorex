@@ -47,3 +47,35 @@ export function findTranslateKeys(text: string, languageId: string): TranslateKe
   }
   return references;
 }
+
+/** A planned replacement of a key reference in source text. */
+export interface ReferenceEdit {
+  /** Offset of the key (without quotes) to replace. */
+  index: number;
+  /** Length of the existing key. */
+  length: number;
+  /** The text to write in its place. */
+  replacement: string;
+}
+
+/**
+ * Plans the edits needed to rewrite every reference to `oldKey` (or any key
+ * nested under it) so it points at `newKey` instead. A namespace rename
+ * (`home` → `landing`) rewrites `home.title` to `landing.title` by replacing only
+ * the renamed prefix, leaving the suffix intact. Returns the edits as
+ * offset/length/replacement records so the caller can map them to editor ranges.
+ */
+export function planReferenceRename(
+  text: string,
+  languageId: string,
+  oldKey: string,
+  newKey: string
+): ReferenceEdit[] {
+  const edits: ReferenceEdit[] = [];
+  for (const ref of findTranslateKeys(text, languageId)) {
+    if (ref.key === oldKey || ref.key.startsWith(`${oldKey}.`)) {
+      edits.push({ index: ref.index, length: ref.length, replacement: newKey + ref.key.slice(oldKey.length) });
+    }
+  }
+  return edits;
+}

@@ -1,17 +1,9 @@
 import * as vscode from 'vscode';
-import { TextDecoder } from 'util';
-import { EXTENSION_IDENTIFIER, ExtensionCommands, HTML_SCAN_EXCLUDE } from './const';
+import { EXTENSION_IDENTIFIER, ExtensionCommands } from './const';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
-import { findTranslateKeys } from './utils/diagnosticsUtils';
 import { listKeyOffsets } from './utils/translationUtils';
-
-/** Position of an offset within text, computed without a `TextDocument`. */
-const positionAt = (text: string, offset: number): vscode.Position => {
-  const before = text.slice(0, offset);
-  const line = before.split('\n').length - 1;
-  return new vscode.Position(line, offset - (before.lastIndexOf('\n') + 1));
-};
+import { buildUsageIndex } from './usageIndex';
 
 /**
  * Shows a "used N×" (or "unused") CodeLens above every leaf key in the i18n JSON
@@ -86,27 +78,9 @@ export class KeyReferenceCodeLensProvider implements vscode.CodeLensProvider {
 
   /** Builds (and caches) the key → usage-locations index from the workspace's HTML/TS. */
   private async ensureIndex(): Promise<Map<string, vscode.Location[]>> {
-    if (this.index) {
-      return this.index;
+    if (!this.index) {
+      this.index = await buildUsageIndex();
     }
-    const decoder = new TextDecoder();
-    const index = new Map<string, vscode.Location[]>();
-    const uris = await vscode.workspace.findFiles('**/*.{html,ts}', HTML_SCAN_EXCLUDE);
-    for (const uri of uris) {
-      try {
-        const text = decoder.decode(await vscode.workspace.fs.readFile(uri));
-        const languageId = uri.path.endsWith('.ts') ? 'typescript' : 'html';
-        for (const ref of findTranslateKeys(text, languageId)) {
-          const range = new vscode.Range(positionAt(text, ref.index), positionAt(text, ref.index + ref.length));
-          const locations = index.get(ref.key) ?? [];
-          locations.push(new vscode.Location(uri, range));
-          index.set(ref.key, locations);
-        }
-      } catch {
-        // Unreadable file — skip it.
-      }
-    }
-    this.index = index;
-    return index;
+    return this.index;
   }
 }

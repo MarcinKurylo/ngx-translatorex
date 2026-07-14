@@ -134,6 +134,20 @@ Marketplace readme), publishes it to the VS Code Marketplace using the `VSCE_PAT
 repository secret, and attaches the `.vsix` to a GitHub Release. The tag name
 should match the `package.json` version, which is the version actually published.
 
+### The MCP server (npm)
+
+The standalone [`mcp/`](mcp/README.md) package publishes to npm separately. The
+`Publish MCP` workflow runs on an `mcp-v*` tag: it runs the unit tests, checks the
+tag matches `mcp/package.json`, builds, and publishes with a dist-tag derived from
+the version — a prerelease (e.g. `0.1.0-preview.1`) goes to `preview`, a clean
+version to `latest`. It uses the `NPM_TOKEN` repository secret (an npm automation
+token, or a granular token with 2FA bypass).
+
+```bash
+# bump mcp/package.json (and mcp/package-lock.json) to the target version first
+git tag mcp-v0.1.0-preview.1 && git push origin mcp-v0.1.0-preview.1
+```
+
 ## License
 
 [MIT](LICENSE)

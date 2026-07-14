@@ -1,7 +1,7 @@
 {
   "name": "ngx-translatorex",
-	"displayName": "ngx-translatorex",
-	"description": "Angular ngx-translate toolkit: one-shortcut extraction, multi-language sync, missing-key diagnostics, go-to-definition, key rename/delete, and hard-coded string detection.",
+	"displayName": "ngx-translatorex — Angular i18n & ngx-translate toolkit",
+	"description": "Angular ngx-translate i18n toolkit: extract hard-coded strings into keys, multi-language sync, missing-key diagnostics, go-to-definition, rename/delete — plus AI auto-translation and agent/MCP tools (Copilot, Claude).",
 	"version": "0.7.0",
 	"publisher": "marcinex",
 	"license": "MIT",
@@ -19,8 +19,9 @@
 		"node": ">=20"
 	},
 	"categories": [
-		"Snippets",
 		"Linters",
+		"Snippets",
+		"AI",
 		"Other"
 	],
 	"keywords": [
@@ -29,9 +30,15 @@
 		"i18n",
 		"internationalization",
 		"translation",
+		"translations",
 		"localization",
+		"l10n",
 		"translate",
-		"ngx"
+		"ngx",
+		"ai",
+		"copilot",
+		"agent",
+		"mcp"
 	],
 	"galleryBanner": {
 		"color": "#1e3aa8",

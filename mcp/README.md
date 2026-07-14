@@ -150,75 +150,12 @@ tool call by default, so writes are confirmed before they hit disk; any
 translation that would drop a `{{ param }}` is rejected rather than written, and
 `dryRun` lets the agent preview a write without touching files.
 
-## Distributing without a registry (private dogfooding)
+## Links
 
-`npm pack` produces a self-contained tarball (the compiled `dist/` is bundled),
-so you can run the server anywhere without publishing:
+- [npm package](https://www.npmjs.com/package/ngx-translatorex-mcp)
+- [VS Code extension](https://marketplace.visualstudio.com/items?itemName=marcinex.ngx-translatorex) (the same i18n operations, in-editor)
+- [Source & issues](https://github.com/MarcinKurylo/ngx-translatorex)
 
-```bash
-cd mcp && npm install && npm run build && npm pack   # → ngx-translatorex-mcp-<version>.tgz
-```
+## License
 
-Point a config at the tarball instead of a package name:
-
-```json
-{ "command": "npx", "args": ["-y", "/abs/path/to/ngx-translatorex-mcp-0.1.0.tgz"],
-  "env": { "NGX_PROJECT_DIR": "/abs/path/to/project" } }
-```
-
-To share across macOS user profiles on the same machine, drop the tarball under
-`/Users/Shared` (readable by every account) — home directories (`~/`, mode 700)
-are not reachable from another profile, so an absolute path into another user's
-home will not work.
-
-## Releasing to npm
-
-Published as [`ngx-translatorex-mcp`](https://www.npmjs.com/package/ngx-translatorex-mcp)
-(currently `0.1.0-preview.0` under the `preview` dist-tag). Releases are automated.
-
-### Automated (recommended) — push a tag
-
-The `Publish MCP` workflow (`.github/workflows/publish-mcp.yml`) publishes on any
-`mcp-v*` tag. It runs the unit tests, checks the tag matches `mcp/package.json`,
-builds, and publishes — choosing the **dist-tag from the version**: a prerelease
-(e.g. `0.1.0-preview.1`) goes to `preview`, a clean version (e.g. `0.1.0`) to
-`latest`.
-
-One-time setup (already done for this repo): create an npm **automation token**
-(or a granular token with 2FA bypass) and add it as a repository secret named
-`NPM_TOKEN`. Then, to release:
-
-```bash
-# version in mcp/package.json must match the tag
-git tag mcp-v0.1.0-preview.0
-git push origin mcp-v0.1.0-preview.0
-```
-
-### Manual (fallback)
-
-From a **full checkout** (the build pulls in `../src/utils/*` via `tsconfig`
-`rootDir: ".."`, so it can't run from the `mcp/` folder alone):
-
-```bash
-cd mcp
-npm publish --tag preview      # or plain `npm publish` for a clean, latest release
-```
-
-Once published, the client config collapses to one line — no local build, no
-absolute path:
-
-```bash
-claude mcp add ngx-translatorex \
-  --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
-  -- npx -y ngx-translatorex-mcp
-```
-
-Alternatives:
-
-- **Reserve the name without a `latest` yet** — bump to a `-preview` version
-  (e.g. `0.1.0-preview`) and `npm publish --tag preview`. Still **public**, but
-  only installs on request (`ngx-translatorex-mcp@preview`), never as the default
-  `latest`, and prerelease versions are excluded from `^`/`~` ranges.
-- **Truly private** is a paid npm feature (`--access restricted`, scoped name)
-  and breaks `npx` for anyone without access — defeating the "any agent" goal.
-  For private dogfooding use the tarball route above instead.
+[MIT](https://github.com/MarcinKurylo/ngx-translatorex/blob/main/LICENSE)

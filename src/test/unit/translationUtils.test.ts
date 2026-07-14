@@ -11,6 +11,7 @@ import {
   generateKey,
   getNode,
   isKeyValid,
+  listKeyOffsets,
   renameKey,
   renameParams,
   setKey,
@@ -166,6 +167,34 @@ describe('renameKey', () => {
     assert.strictEqual(renameKey(tree, 'missing', 'x'), false);
     assert.strictEqual(renameKey(tree, 'home.title', 'home.title'), false);
     assert.deepStrictEqual(tree, { home: { title: 'Home' } });
+  });
+});
+
+describe('listKeyOffsets', () => {
+  const json = '{\n  "home": {\n    "title": "Home",\n    "welcome": "Welcome {{ name }}"\n  },\n  "common": {\n    "save": "Save"\n  }\n}\n';
+
+  it('lists every leaf key with its dotted path and offset', () => {
+    const keys = listKeyOffsets(json);
+    assert.deepStrictEqual(keys.map((k) => k.key), ['home.title', 'home.welcome', 'common.save']);
+    for (const { key, offset } of keys) {
+      const leaf = key.split('.').pop();
+      assert.strictEqual(json.slice(offset, offset + leaf!.length), leaf);
+    }
+  });
+
+  it('does not list intermediate (object) keys', () => {
+    const keys = listKeyOffsets(json).map((k) => k.key);
+    assert.ok(!keys.includes('home'));
+    assert.ok(!keys.includes('common'));
+  });
+
+  it('is not fooled by a value equal to a key name', () => {
+    const keys = listKeyOffsets('{ "a": "save", "common": { "save": "Save" } }').map((k) => k.key);
+    assert.deepStrictEqual(keys, ['a', 'common.save']);
+  });
+
+  it('returns an empty array for an empty object', () => {
+    assert.deepStrictEqual(listKeyOffsets('{}'), []);
   });
 });
 

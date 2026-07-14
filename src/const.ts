@@ -1,6 +1,6 @@
 export const EXTENSION_IDENTIFIER = 'ngx-translatorex';
 export type ConfigValue = 'language' | 'mode' | 'path' | 'placeholder';
-export type BooleanConfigValue = 'diagnostics' | 'syncLanguages' | 'detectHardcodedStrings' | 'autoTranslateOnCreate' | 'sortKeysOnSave' | 'inlineTranslations' | 'translationCoverageStatusBar';
+export type BooleanConfigValue = 'diagnostics' | 'syncLanguages' | 'detectHardcodedStrings' | 'autoTranslateOnCreate' | 'sortKeysOnSave' | 'inlineTranslations' | 'translationCoverageStatusBar' | 'keyUsageCodeLens';
 export type NumberConfigValue = 'hardcodedStringsMinLength';
 export type ArrayConfigValue = 'hardcodedStringsIgnore';
 
@@ -34,5 +34,6 @@ export enum ExtensionCommands  {
   IGNORE_HARDCODED_STRING = 'ignoreHardcodedString',
   SHOW_HARDCODED_STRINGS_REPORT = 'showHardcodedStringsReport',
   TRANSLATE_PLACEHOLDERS = 'translatePlaceholders',
-  EXTRACT_TEMPLATE_STRINGS = 'extractTemplateStrings'
+  EXTRACT_TEMPLATE_STRINGS = 'extractTemplateStrings',
+  SHOW_KEY_REFERENCES = 'showKeyReferences'
 }

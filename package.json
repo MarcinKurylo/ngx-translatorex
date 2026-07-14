@@ -180,6 +180,12 @@
 						"default": true,
 						"scope": "resource",
 						"description": "Show per-language translation coverage (e.g. 'pl 87% · fr 60%') in the status bar, click-through to the report."
+					},
+					"ngx-translatorex.keyUsageCodeLens": {
+						"type": "boolean",
+						"default": true,
+						"scope": "resource",
+						"description": "Show a 'used N×' CodeLens above each key in the i18n JSON files, click-through to its usages."
 					}
 				}
 			}

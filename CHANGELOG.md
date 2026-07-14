@@ -4,6 +4,9 @@ All notable changes to the "ngx-translatorex" extension will be documented in th
 
 ## [Unreleased]
 
+- Key usage CodeLens: a `used N×` (or `unused`) lens above every key in the i18n
+  JSON files, click-through to a peek of the usages across templates and
+  components. Toggle with `ngx-translatorex.keyUsageCodeLens`.
 - Translation coverage in the status bar: per-language coverage
   (`pl 87% · fr 60% · es 40%`) with a tooltip breakdown, click-through to the full
   report. Toggle with `ngx-translatorex.translationCoverageStatusBar`.

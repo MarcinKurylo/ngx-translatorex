@@ -68,13 +68,19 @@ settings and commands.
   directly.
 - `src/utils/languageModelManager.ts` — thin wrapper over the VS Code Language
   Model API (`vscode.lm`): model selection and request streaming.
+- `src/utils/i18nToolUtils.ts` — pure, `vscode`-free logic shared by both agent
+  surfaces: missing-translation summarisation/pagination, batch-extraction
+  planning, partial-match detection and stub seeding. Unit-tested directly.
 - `src/languageModelTools.ts` — registers the Language Model tools
-  (`scanHardcodedStrings`, `extractString`, `listMissingTranslations`,
-  `setTranslation`, `setTranslations`) that let an AI agent orchestrate the i18n
-  flow; each is a thin, structured wrapper over the same engine the commands use.
+  (`scanHardcodedStrings`, `extractString`, `extractStrings`,
+  `listMissingTranslations`, `setTranslation`, `setTranslations`,
+  `seedMissingTranslations`, `listUndefinedKeys`) that let an AI agent orchestrate
+  the i18n flow; each is a thin, structured wrapper over the same engine the
+  commands use.
 - `mcp/` — a standalone Model Context Protocol server (separate package) that
   re-exposes the same operations to external agents over stdio, reusing the pure
-  `src/utils` logic via a plain-`fs` file layer. Not part of the extension `.vsix`.
+  `src/utils` logic via a plain-`fs` file layer. Not part of the extension
+  `.vsix`. See [`mcp/README.md`](mcp/README.md).
 - `src/extension.ts` — activation: warms the cache, starts the watcher, wires up
   disposables.
 

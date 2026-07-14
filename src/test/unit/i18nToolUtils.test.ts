@@ -5,6 +5,7 @@ import {
   UntranslatedItem,
   findContainingCandidate,
   planFileExtractions,
+  planSeed,
   shapeMissingTranslations
 } from '../../utils/i18nToolUtils';
 import { applyExtractionToText } from '../../utils/hardcodedStringUtils';
@@ -134,5 +135,31 @@ describe('findContainingCandidate', () => {
 
   it('returns undefined when nothing contains the text', () => {
     assert.strictEqual(findContainingCandidate('<p>Hello world</p>', 'Goodbye'), undefined);
+  });
+});
+
+describe('planSeed', () => {
+  const PLACEHOLDER = '[TODO]';
+  const main = { 'a.one': 'One', 'a.two': 'Two', 'a.three': 'Three' };
+
+  it('seeds missing and placeholder keys with the placeholder by default', () => {
+    const language = { 'a.one': 'Jeden', 'a.two': PLACEHOLDER };
+    const plan = planSeed(main, language, PLACEHOLDER, false);
+    // a.two already holds the placeholder → no-op dropped; a.three missing → seeded.
+    assert.deepStrictEqual(plan, [{ key: 'a.three', value: PLACEHOLDER }]);
+  });
+
+  it('copies the main-language source when copySource is set', () => {
+    const language = { 'a.one': 'Jeden' };
+    const plan = planSeed(main, language, PLACEHOLDER, true);
+    assert.deepStrictEqual(plan, [
+      { key: 'a.two', value: 'Two' },
+      { key: 'a.three', value: 'Three' }
+    ]);
+  });
+
+  it('returns nothing when the language is fully translated', () => {
+    const language = { 'a.one': 'Jeden', 'a.two': 'Dwa', 'a.three': 'Trzy' };
+    assert.deepStrictEqual(planSeed(main, language, PLACEHOLDER, false), []);
   });
 });

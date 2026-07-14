@@ -16,6 +16,7 @@ const TOOL = {
   listMissing: `${EXTENSION_IDENTIFIER}_listMissingTranslations`,
   setTranslation: `${EXTENSION_IDENTIFIER}_setTranslation`,
   setTranslations: `${EXTENSION_IDENTIFIER}_setTranslations`,
+  seedMissing: `${EXTENSION_IDENTIFIER}_seedMissingTranslations`,
   listUndefinedKeys: `${EXTENSION_IDENTIFIER}_listUndefinedKeys`
 };
 
@@ -59,6 +60,7 @@ export class LanguageModelTools {
       vscode.lm.registerTool(TOOL.listMissing, LanguageModelTools.listMissingTool()),
       vscode.lm.registerTool(TOOL.setTranslation, LanguageModelTools.setTranslationTool()),
       vscode.lm.registerTool(TOOL.setTranslations, LanguageModelTools.setTranslationsTool()),
+      vscode.lm.registerTool(TOOL.seedMissing, LanguageModelTools.seedMissingTool()),
       vscode.lm.registerTool(TOOL.listUndefinedKeys, LanguageModelTools.listUndefinedKeysTool())
     ];
   }
@@ -245,12 +247,13 @@ export class LanguageModelTools {
   }
 
   /** Tool: write many translations across language files in one confirmed batch. */
-  private static setTranslationsTool(): vscode.LanguageModelTool<{ translations: { language: string; key: string; value: string }[] }> {
+  private static setTranslationsTool(): vscode.LanguageModelTool<{ translations: { language: string; key: string; value: string }[]; dryRun?: boolean }> {
     return {
       prepareInvocation: (options) => {
         const count = options.input.translations?.length ?? 0;
+        const preview = options.input.dryRun ? ' (preview)' : '';
         return {
-          invocationMessage: `Writing ${count} translation(s)`,
+          invocationMessage: `Writing ${count} translation(s)${preview}`,
           confirmationMessages: {
             title: 'Write translations',
             message: `Write ${count} translation(s) across the language files?`
@@ -258,9 +261,27 @@ export class LanguageModelTools {
         };
       },
       invoke: async (options) => {
-        const { saved, written, skipped } = await FileSystemManager.setTranslations(options.input.translations ?? []);
-        return result({ saved, written, skipped });
+        const result_ = await FileSystemManager.setTranslations(options.input.translations ?? [], { dryRun: options.input.dryRun });
+        return result(result_);
       }
+    };
+  }
+
+  /**
+   * Tool: seed secondary-language files with a starting value (placeholder, or a
+   * copy of the source when `copySource`) for every key they still lack. Optional
+   * groundwork; `setTranslations` also creates missing keys directly.
+   */
+  private static seedMissingTool(): vscode.LanguageModelTool<{ copySource?: boolean; language?: string; dryRun?: boolean }> {
+    return {
+      prepareInvocation: (options) => ({
+        invocationMessage: options.input.dryRun ? 'Previewing seed of missing keys' : 'Seeding missing keys',
+        confirmationMessages: {
+          title: 'Seed missing translations',
+          message: `Fill every still-missing key in ${options.input.language ?? 'each secondary language'} with ${options.input.copySource ? 'a copy of the source text' : 'the placeholder'}?`
+        }
+      }),
+      invoke: async (options) => result(await FileSystemManager.seedMissingTranslations(options.input))
     };
   }
 

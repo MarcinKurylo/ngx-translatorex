@@ -12,6 +12,25 @@ import {
   interpolationSnippet,
   normalizeInterpolation
 } from './hardcodedStringUtils';
+import { findUntranslatedKeys } from './translationUtils';
+
+/**
+ * Plans a starting value for every key a secondary language still lacks
+ * (missing, or holding the placeholder): either the placeholder itself, or a
+ * copy of the main-language source when `copySource` is set. No-op writes (the
+ * key already holds the intended value) are dropped so a seed run only reports
+ * real changes. Pure — the caller writes the returned entries.
+ */
+export function planSeed(
+  mainFlat: { [key: string]: string },
+  languageFlat: { [key: string]: string },
+  placeholder: string,
+  copySource: boolean
+): { key: string; value: string }[] {
+  return findUntranslatedKeys(mainFlat, languageFlat, placeholder)
+    .map((key) => ({ key, value: copySource ? mainFlat[key] : placeholder }))
+    .filter((entry) => languageFlat[entry.key] !== entry.value);
+}
 
 /** One requested extraction: an exact text and the key to create for it. */
 export interface ExtractionRequest {

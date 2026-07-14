@@ -297,7 +297,7 @@
 				"toolReferenceName": "setTranslations",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Write many translations at once, across one or more language files, in a single operation. Prefer this over setTranslation when filling multiple keys (e.g. after listMissingTranslations). Preserve any {{ interpolation }} tokens exactly — a value that drops a param present in the source is rejected and reported as skipped. Returns how many entries were written and skipped.",
+				"modelDescription": "Write many translations at once, across one or more language files, in a single operation. Prefer this over setTranslation when filling multiple keys (e.g. after listMissingTranslations). Preserve any {{ interpolation }} tokens exactly — a value that drops a param present in the source is rejected and reported as skipped. Pass dryRun:true to preview the written/skipped counts without writing. Returns how many entries were written and skipped.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {
@@ -313,9 +313,26 @@
 								},
 								"required": ["language", "key", "value"]
 							}
-						}
+						},
+						"dryRun": { "type": "boolean", "description": "Preview only: validate and count without writing files." }
 					},
 					"required": ["translations"]
+				}
+			},
+			{
+				"name": "ngx-translatorex_seedMissingTranslations",
+				"displayName": "Seed missing translations",
+				"toolReferenceName": "seedMissingTranslations",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Fill secondary-language files with a starting value for every key they still lack — the placeholder ([TODO]) or a copy of the main-language source (copySource:true). Optional groundwork; NOT required for translating, since setTranslations creates missing keys directly. Pass dryRun:true to preview. Returns how many keys were seeded per language.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"copySource": { "type": "boolean", "description": "Seed with the main-language source text instead of the [TODO] placeholder." },
+						"language": { "type": "string", "description": "Only seed this secondary language; omit for all." },
+						"dryRun": { "type": "boolean", "description": "Preview only: count what would be seeded without writing." }
+					}
 				}
 			},
 			{

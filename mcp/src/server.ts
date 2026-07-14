@@ -79,7 +79,7 @@ const tools = [
   },
   {
     name: 'setTranslations',
-    description: 'Write many translations across language files at once. ALWAYS batch — pass every key/language you have in ONE call; never loop one call per key. Preserve any {{ interpolation }} tokens exactly (a value that drops a source param is skipped). Returns how many entries were written and skipped.',
+    description: 'Write many translations across language files at once. ALWAYS batch — pass every key/language you have in ONE call; never loop one call per key. Preserve any {{ interpolation }} tokens exactly (a value that drops a source param is skipped). Pass dryRun:true to preview the written/skipped counts without touching files. Returns how many entries were written and skipped.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -94,9 +94,22 @@ const tools = [
             },
             required: ['language', 'key', 'value']
           }
-        }
+        },
+        dryRun: { type: 'boolean', description: 'Preview only: validate and count without writing files.' }
       },
       required: ['translations']
+    }
+  },
+  {
+    name: 'seedMissingTranslations',
+    description: 'Fill secondary-language files with a starting value for every key they still lack — the placeholder ([TODO]) or a copy of the main-language source (copySource:true). Optional groundwork; NOT required for translating, since setTranslations creates missing keys directly. Pass dryRun:true to preview. Returns how many keys were seeded per language.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        copySource: { type: 'boolean', description: 'Seed with the main-language source text instead of the [TODO] placeholder.' },
+        language: { type: 'string', description: 'Only seed this secondary language; omit for all.' },
+        dryRun: { type: 'boolean', description: 'Preview only: count what would be seeded without writing.' }
+      }
     }
   }
 ];
@@ -165,7 +178,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         data = i18n.listUndefinedKeys();
         break;
       case 'setTranslations':
-        data = i18n.setTranslations((args.translations as { language: string; key: string; value: string }[]) ?? []);
+        data = i18n.setTranslations(
+          (args.translations as { language: string; key: string; value: string }[]) ?? [],
+          { dryRun: args.dryRun as boolean | undefined }
+        );
+        break;
+      case 'seedMissingTranslations':
+        data = i18n.seedMissing({
+          copySource: args.copySource as boolean | undefined,
+          language: args.language as string | undefined,
+          dryRun: args.dryRun as boolean | undefined
+        });
         break;
       default:
         return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };

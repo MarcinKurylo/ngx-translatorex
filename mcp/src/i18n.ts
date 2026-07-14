@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TranslationTree, findUntranslatedKeys, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
-import { findContainingCandidate, planFileExtractions } from '../../src/utils/i18nToolUtils';
+import { findContainingCandidate, planFileExtractions, planSeed } from '../../src/utils/i18nToolUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
 import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
@@ -257,7 +257,10 @@ export const listMissing = (options: ListMissingOptions = {}): (MissingSummary |
  * value is validated against the main-language source: one that drops a
  * `{{ param }}` is skipped rather than written.
  */
-export const setTranslations = (items: { language: string; key: string; value: string }[]): { written: number; skipped: number } => {
+export const setTranslations = (
+  items: { language: string; key: string; value: string }[],
+  options: { dryRun?: boolean } = {}
+): { written: number; skipped: number; dryRun?: boolean } => {
   const mainFlat = flattenObject(readTree(MAIN_LANG));
   const byLanguage = new Map<string, { language: string; tree: TranslationTree }>();
   const known = new Set(listLanguages());
@@ -278,10 +281,42 @@ export const setTranslations = (items: { language: string; key: string; value: s
     setKey(byLanguage.get(item.language)!.tree, item.key, item.value);
     written++;
   }
+  if (options.dryRun) {
+    return { written, skipped, dryRun: true };
+  }
   for (const { language, tree } of byLanguage.values()) {
     writeTree(language, tree);
   }
   return { written, skipped };
+};
+
+/**
+ * Fills secondary-language files with a starting value for every key they still
+ * lack — the placeholder, or the main-language source when `copySource` is set.
+ * Optional groundwork; not required for translating (setTranslations creates
+ * missing keys directly). `dryRun` reports the counts without writing.
+ */
+export const seedMissing = (
+  options: { copySource?: boolean; language?: string; dryRun?: boolean } = {}
+): { seeded: number; languages: { language: string; seeded: number }[]; dryRun?: boolean } => {
+  const mainFlat = flattenObject(readTree(MAIN_LANG));
+  const targets = listLanguages().filter(
+    (language) => language !== MAIN_LANG && (options.language === undefined || language === options.language)
+  );
+  const perLanguage: { language: string; seeded: number }[] = [];
+  for (const language of targets) {
+    const tree = readTree(language);
+    const plan = planSeed(mainFlat, flattenObject(tree), PLACEHOLDER, options.copySource ?? false);
+    for (const entry of plan) {
+      setKey(tree, entry.key, entry.value);
+    }
+    if (plan.length && !options.dryRun) {
+      writeTree(language, tree);
+    }
+    perLanguage.push({ language, seeded: plan.length });
+  }
+  const seeded = perLanguage.reduce((sum, entry) => sum + entry.seeded, 0);
+  return { seeded, languages: perLanguage, ...(options.dryRun ? { dryRun: true } : {}) };
 };
 
 /** Lists `translate` key references in templates/components that don't exist in the main language. */

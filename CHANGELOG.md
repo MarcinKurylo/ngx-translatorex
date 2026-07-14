@@ -2,6 +2,16 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [0.6.1]
+
+- Inline translation preview polish: the greyed value after each
+  `'key' | translate` reference is now a small outlined badge (subtle fill plus a
+  hairline border) instead of a cramped inlay pill, and it is anchored after the
+  whole expression — past the interpolation's `}}` or, for a property binding
+  like `[title]="'key' | translate"`, past the attribute value — so it no longer
+  splits the expression or, on a line with several references, jumps to the wrong
+  spot.
+
 ## [0.6.0]
 
 - Key usage CodeLens: a `used N×` (or `unused`) lens above every key in the i18n

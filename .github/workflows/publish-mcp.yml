@@ -1,0 +1,49 @@
+name: Publish MCP
+
+# Publishes the standalone MCP server (mcp/) to npm when an `mcp-v*` tag is
+# pushed. The dist-tag is derived from the version: a prerelease version
+# (e.g. 0.1.0-preview.0) publishes under `preview`, a clean version under
+# `latest`. Requires an `NPM_TOKEN` repository secret (npm automation token).
+on:
+  push:
+    tags:
+      - 'mcp-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      # Gate the publish on the shared pure-logic unit tests (they cover the
+      # engine the MCP server reuses).
+      - run: npm ci
+      - run: npm run test:unit
+
+      - name: Verify the tag matches mcp/package.json
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#mcp-v}"
+          PKG_VERSION="$(node -p "require('./mcp/package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME resolves to $TAG_VERSION but mcp/package.json is $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      # `npm ci` triggers the package's `prepare` hook, which builds dist/.
+      - name: Install and build the MCP package
+        working-directory: mcp
+        run: npm ci
+
+      - name: Publish to npm
+        working-directory: mcp
+        run: |
+          DIST_TAG="$(node -p "require('./package.json').version.includes('-') ? 'preview' : 'latest'")"
+          echo "Publishing $(node -p "require('./package.json').version") with dist-tag: $DIST_TAG"
+          npm publish --tag "$DIST_TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

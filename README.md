@@ -44,6 +44,23 @@ JSON while the selection is replaced with the matching `translate` pipe or key.
 See [`README.marketplace.md`](README.marketplace.md) for the full usage guide,
 settings and commands.
 
+## Using it with an AI agent (MCP)
+
+Beyond the in-editor Copilot agent tools, the same i18n operations ship as a
+standalone [Model Context Protocol](https://modelcontextprotocol.io) server, so
+Claude Desktop / Claude Code (or any MCP agent) can drive the whole
+scan → extract → translate flow. Build [`mcp/`](mcp/README.md) once and register
+it:
+
+```bash
+cd mcp && npm install && npm run build
+claude mcp add ngx-translatorex \
+  --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
+  -- node /abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js
+```
+
+See [`mcp/README.md`](mcp/README.md) for configuration and example prompts.
+
 ## Architecture
 
 - `src/utils/translationUtils.ts` — pure, `vscode`-free translation-tree logic

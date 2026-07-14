@@ -45,6 +45,33 @@ Switch modes any time with **ngx-translatorex: Set extension mode**.
 
 If your selection contains interpolation placeholders, they are extracted and can be renamed by appending names to the key, separated by colons — e.g. entering `greeting.hello:name` renames the first `{{ ... }}` to `{{ name }}` and binds it in the generated pipe.
 
+## Use it with an AI agent (Copilot & Claude / MCP)
+
+The same i18n operations are exposed as tools an AI agent can run end to end —
+scan for hard-coded strings, extract them into semantic keys, translate what's
+missing — in two ways:
+
+- **Inside VS Code** — in Copilot's agent mode the tools are already available;
+  just ask (e.g. *"localize this template"*). Nothing extra to install.
+- **Any MCP agent (Claude Desktop, Claude Code, …)** — a standalone
+  [Model Context Protocol](https://modelcontextprotocol.io) server ships in the
+  repo. Build it once and point your agent at your project:
+
+  ```bash
+  git clone https://github.com/MarcinKurylo/ngx-translatorex
+  cd ngx-translatorex/mcp && npm install && npm run build
+
+  claude mcp add ngx-translatorex \
+    --env NGX_PROJECT_DIR=/abs/path/to/your/angular/project \
+    -- node /abs/path/to/ngx-translatorex/mcp/dist/mcp/src/server.js
+  ```
+
+  Then just ask, e.g. *"scan my templates for hard-coded strings, extract them
+  into sensible keys, and translate everything that's missing."*
+
+Full setup, configuration and example prompts are in
+[`mcp/README.md`](https://github.com/MarcinKurylo/ngx-translatorex/blob/main/mcp/README.md).
+
 ## Settings
 
 | Setting | Description | Default |

@@ -23,8 +23,31 @@ const tools = [
     inputSchema: { type: 'object', properties: { file: { type: 'string', description: 'Optional project-relative .html path; omit to scan all templates in one call.' } } }
   },
   {
+    name: 'extractStrings',
+    description: 'Extract MANY hard-coded strings into i18n keys in ONE call (batch — prefer this over extractString when you have more than one). For each item, replaces every occurrence of the exact text with a `{{ key | translate }}` pipe and adds the key across all language files. Omit an item\'s `files` to extract that text from EVERY template (common for shared buttons/labels). Key naming: meaningful, nested, by feature/area/element, e.g. "checkout.summary.total"; reuse the same key for identical text. Returns per item how many occurrences were replaced and in which files.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          description: 'Extractions to perform in this batch. Group everything you found into a single call.',
+          items: {
+            type: 'object',
+            properties: {
+              text: { type: 'string', description: 'Exact hard-coded text, as returned by scanHardcodedStrings.' },
+              key: { type: 'string', description: 'Dotted i18n key to create, e.g. "page.title". Semantic and consistent; reuse for identical text.' },
+              files: { type: 'array', items: { type: 'string' }, description: 'Optional project-relative .html paths; omit to extract this text from every template.' }
+            },
+            required: ['text', 'key']
+          }
+        }
+      },
+      required: ['items']
+    }
+  },
+  {
     name: 'extractString',
-    description: 'Replace every hard-coded occurrence of an exact text in a template with a translate pipe and add the key (with the text as its main-language value) across all languages. Key naming: meaningful, nested, by feature/area/element, e.g. "checkout.summary.total", "actions.save"; reuse the same key for identical text.',
+    description: 'Single-string variant of extractStrings (prefer extractStrings for more than one). Replace every hard-coded occurrence of an exact text in a template with a translate pipe and add the key (with the text as its main-language value) across all languages. Key naming: meaningful, nested, by feature/area/element, e.g. "checkout.summary.total", "actions.save"; reuse the same key for identical text.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -122,6 +145,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case 'scanHardcodedStrings':
         data = i18n.scan(args.file as string | undefined);
+        break;
+      case 'extractStrings':
+        data = i18n.extractStrings((args.items as { text: string; key: string; files?: string[] }[]) ?? []);
         break;
       case 'extractString':
         data = i18n.extract(args.file as string, args.text as string, args.key as string);

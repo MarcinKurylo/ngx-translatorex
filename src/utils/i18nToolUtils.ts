@@ -5,6 +5,70 @@
  * the token-efficiency logic can be unit-tested directly.
  */
 
+import {
+  HardcodedStringOptions,
+  PlannedExtraction,
+  findHardcodedStrings,
+  interpolationSnippet,
+  normalizeInterpolation
+} from './hardcodedStringUtils';
+
+/** One requested extraction: an exact text and the key to create for it. */
+export interface ExtractionRequest {
+  /** Exact hard-coded text to replace (as returned by the scan). */
+  text: string;
+  /** Dotted i18n key to create. */
+  key: string;
+}
+
+/** Per-request outcome of {@link planFileExtractions} for a single template. */
+export interface ExtractionOutcome {
+  text: string;
+  key: string;
+  /** How many occurrences in this file were planned for replacement. */
+  extracted: number;
+  /** Parameter names bound from interpolations in the text, if any. */
+  params?: string[];
+}
+
+/** The combined plan for one template plus each request's outcome. */
+export interface FileExtractionResult {
+  plan: PlannedExtraction[];
+  outcomes: ExtractionOutcome[];
+}
+
+/**
+ * Plans extracting several exact texts from one template's source in a single
+ * pass. Each request replaces every occurrence of its exact text with a
+ * `translate` pipe. Offsets already claimed by an earlier request are skipped, so
+ * overlapping requests can never produce corrupt edits. Pure: the caller applies
+ * the returned plan with {@link applyExtractionToText} and writes the file.
+ */
+export function planFileExtractions(
+  source: string,
+  requests: ExtractionRequest[],
+  options: HardcodedStringOptions = {}
+): FileExtractionResult {
+  const candidates = findHardcodedStrings(source, options);
+  const claimed = new Set<number>();
+  const plan: PlannedExtraction[] = [];
+  const outcomes: ExtractionOutcome[] = requests.map((request) => {
+    const { value, params } = normalizeInterpolation(request.text);
+    const snippet = interpolationSnippet(request.key, params);
+    let extracted = 0;
+    for (const candidate of candidates) {
+      if (candidate.text !== request.text || claimed.has(candidate.index)) {
+        continue;
+      }
+      claimed.add(candidate.index);
+      plan.push({ index: candidate.index, length: candidate.length, text: value, key: request.key, snippet });
+      extracted++;
+    }
+    return { text: request.text, key: request.key, extracted, params: params.map((param) => param.name) };
+  });
+  return { plan, outcomes };
+}
+
 /** One key that still needs translating, with its main-language source text. */
 export interface UntranslatedItem {
   /** Secondary language code the key is missing/placeholder in. */

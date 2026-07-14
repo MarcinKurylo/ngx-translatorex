@@ -6,12 +6,13 @@ import { FileSystemManager } from './utils/fileSystemManager';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation, PlannedExtraction } from './utils/hardcodedStringUtils';
 import { findTranslateKeys } from './utils/diagnosticsUtils';
 import { buildTranslationReport, flattenObject } from './utils/translationUtils';
-import { ListMissingOptions, UntranslatedItem, shapeMissingTranslations } from './utils/i18nToolUtils';
+import { ListMissingOptions, UntranslatedItem, planFileExtractions, shapeMissingTranslations } from './utils/i18nToolUtils';
 
 /** Tool names, namespaced under the extension id (must match package.json contributions). */
 const TOOL = {
   scan: `${EXTENSION_IDENTIFIER}_scanHardcodedStrings`,
   extract: `${EXTENSION_IDENTIFIER}_extractString`,
+  extractStrings: `${EXTENSION_IDENTIFIER}_extractStrings`,
   listMissing: `${EXTENSION_IDENTIFIER}_listMissingTranslations`,
   setTranslation: `${EXTENSION_IDENTIFIER}_setTranslation`,
   setTranslations: `${EXTENSION_IDENTIFIER}_setTranslations`,
@@ -54,6 +55,7 @@ export class LanguageModelTools {
     return [
       vscode.lm.registerTool(TOOL.scan, LanguageModelTools.scanTool()),
       vscode.lm.registerTool(TOOL.extract, LanguageModelTools.extractTool()),
+      vscode.lm.registerTool(TOOL.extractStrings, LanguageModelTools.extractStringsTool()),
       vscode.lm.registerTool(TOOL.listMissing, LanguageModelTools.listMissingTool()),
       vscode.lm.registerTool(TOOL.setTranslation, LanguageModelTools.setTranslationTool()),
       vscode.lm.registerTool(TOOL.setTranslations, LanguageModelTools.setTranslationsTool()),
@@ -101,6 +103,90 @@ export class LanguageModelTools {
           FileSystemManager.onCacheChanged?.();
         }
         return result({ key, extracted: plan.length, keyCreated: saved, params: params.map((param) => param.name) });
+      }
+    };
+  }
+
+  /**
+   * Tool: extract many hard-coded strings into keys in one confirmed batch. Each
+   * item replaces its exact text across the given files (or every template when
+   * `files` is omitted) and its key is added across the language files.
+   */
+  private static extractStringsTool(): vscode.LanguageModelTool<{ items: { text: string; key: string; files?: string[] }[] }> {
+    return {
+      prepareInvocation: (options) => {
+        const count = options.input.items?.length ?? 0;
+        return {
+          invocationMessage: `Extracting ${count} string(s)`,
+          confirmationMessages: {
+            title: 'Extract hard-coded strings',
+            message: `Replace ${count} hard-coded string(s) across the templates and add their keys to every language file?`
+          }
+        };
+      },
+      invoke: async (options) => {
+        const items = options.input.items ?? [];
+        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
+        const detection = detectionOptions();
+        const allTemplates = await vscode.workspace.findFiles('**/*.html', HTML_SCAN_EXCLUDE);
+        const perFile = new Map<string, { uri: vscode.Uri; requests: { text: string; key: string; item: number }[] }>();
+        for (let index = 0; index < items.length; index++) {
+          const item = items[index];
+          const uris = item.files?.length
+            ? (await Promise.all(item.files.map((file) => vscode.workspace.findFiles(file, undefined, 1)))).flatMap((found) => found.slice(0, 1))
+            : allTemplates;
+          for (const uri of uris) {
+            const entry = perFile.get(uri.toString()) ?? { uri, requests: [] };
+            entry.requests.push({ text: item.text, key: item.key, item: index });
+            perFile.set(uri.toString(), entry);
+          }
+        }
+
+        const accumulated = items.map(() => ({ extracted: 0, files: new Set<string>() }));
+        for (const { uri, requests } of perFile.values()) {
+          const source = decoder.decode(await vscode.workspace.fs.readFile(uri));
+          const { plan, outcomes } = planFileExtractions(source, requests.map((request) => ({ text: request.text, key: request.key })), detection);
+          if (plan.length) {
+            await vscode.workspace.fs.writeFile(uri, encoder.encode(applyExtractionToText(source, plan)));
+          }
+          outcomes.forEach((outcome, position) => {
+            const index = requests[position].item;
+            accumulated[index].extracted += outcome.extracted;
+            if (outcome.extracted) {
+              accumulated[index].files.add(vscode.workspace.asRelativePath(uri));
+            }
+          });
+        }
+
+        const seen = new Set<string>();
+        for (let index = 0; index < items.length; index++) {
+          if (accumulated[index].extracted === 0 || seen.has(items[index].key)) {
+            continue;
+          }
+          seen.add(items[index].key);
+          const value = normalizeInterpolation(items[index].text).value;
+          const { saved } = await FileSystemManager.addTranslation(items[index].key, value);
+          if (saved) {
+            FileSystemManager.cache[items[index].key] = value;
+          }
+        }
+        FileSystemManager.onCacheChanged?.();
+
+        return result({
+          results: items.map((item, index) => {
+            const extracted = accumulated[index].extracted;
+            const params = normalizeInterpolation(item.text).params.map((param) => param.name);
+            return {
+              key: item.key,
+              text: item.text,
+              extracted,
+              files: [...accumulated[index].files],
+              ...(params.length ? { params } : {}),
+              ...(extracted === 0 ? { message: 'No hard-coded occurrence of that exact text found' } : {})
+            };
+          })
+        });
       }
     };
   }

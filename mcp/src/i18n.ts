@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TranslationTree, findUntranslatedKeys, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
+import { planFileExtractions } from '../../src/utils/i18nToolUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
 import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
@@ -119,6 +120,88 @@ export const extract = (file: string, text: string, key: string): { key: string;
     writeTree(language, tree);
   }
   return { key, extracted: plan.length, params: params.map((param) => param.name) };
+};
+
+/** Adds keys to the language files: real value in the main language, placeholder elsewhere. One read/write per language. */
+const addKeysToLanguages = (entries: { key: string; value: string }[]): void => {
+  const unique = new Map(entries.map((entry) => [entry.key, entry.value]));
+  for (const language of listLanguages()) {
+    const tree = readTree(language);
+    let changed = false;
+    for (const [key, value] of unique) {
+      if (language === MAIN_LANG) {
+        setKey(tree, key, value);
+        changed = true;
+      } else if (flattenObject(tree)[key] === undefined) {
+        setKey(tree, key, PLACEHOLDER);
+        changed = true;
+      }
+    }
+    if (changed) {
+      writeTree(language, tree);
+    }
+  }
+};
+
+/**
+ * Batch variant of {@link extract}: replaces many exact texts across many
+ * templates in one call, then adds every extracted key to the language files.
+ * An item without `files` is applied to every template (the common case for
+ * shared buttons/labels). Returns, per item, how many occurrences were replaced
+ * and in which files.
+ */
+export const extractStrings = (
+  items: { text: string; key: string; files?: string[] }[]
+): { results: { key: string; text: string; extracted: number; files: string[]; params?: string[]; message?: string }[] } => {
+  const templates = listTemplates();
+  const perFile = new Map<string, { text: string; key: string; item: number }[]>();
+  items.forEach((item, index) => {
+    const files = item.files?.length
+      ? item.files.map((file) => path.resolve(PROJECT_DIR, file)).filter((abs) => fs.existsSync(abs))
+      : templates;
+    for (const abs of files) {
+      const list = perFile.get(abs) ?? [];
+      list.push({ text: item.text, key: item.key, item: index });
+      perFile.set(abs, list);
+    }
+  });
+
+  const accumulated = items.map(() => ({ extracted: 0, files: new Set<string>() }));
+  for (const [abs, requests] of perFile) {
+    const source = fs.readFileSync(abs, 'utf8');
+    const { plan, outcomes } = planFileExtractions(source, requests.map((request) => ({ text: request.text, key: request.key })), DETECTION);
+    if (plan.length) {
+      fs.writeFileSync(abs, applyExtractionToText(source, plan));
+    }
+    outcomes.forEach((outcome, position) => {
+      const index = requests[position].item;
+      accumulated[index].extracted += outcome.extracted;
+      if (outcome.extracted) {
+        accumulated[index].files.add(path.relative(PROJECT_DIR, abs));
+      }
+    });
+  }
+
+  addKeysToLanguages(
+    items
+      .filter((_, index) => accumulated[index].extracted > 0)
+      .map((item) => ({ key: item.key, value: normalizeInterpolation(item.text).value }))
+  );
+
+  return {
+    results: items.map((item, index) => {
+      const extracted = accumulated[index].extracted;
+      const params = normalizeInterpolation(item.text).params.map((param) => param.name);
+      return {
+        key: item.key,
+        text: item.text,
+        extracted,
+        files: [...accumulated[index].files],
+        ...(params.length ? { params } : {}),
+        ...(extracted === 0 ? { message: `No hard-coded occurrence of that exact text found` } : {})
+      };
+    })
+  };
 };
 
 /** Every key still needing translation across the secondary languages, as a flat list. */

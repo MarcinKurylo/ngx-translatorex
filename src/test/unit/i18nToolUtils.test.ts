@@ -3,8 +3,10 @@ import {
   MissingDetail,
   MissingSummary,
   UntranslatedItem,
+  planFileExtractions,
   shapeMissingTranslations
 } from '../../utils/i18nToolUtils';
+import { applyExtractionToText } from '../../utils/hardcodedStringUtils';
 
 const items: UntranslatedItem[] = [
   { language: 'pl', key: 'checkout.summary.total', source: 'Total' },
@@ -75,5 +77,45 @@ describe('shapeMissingTranslations', () => {
     }) as MissingDetail;
     assert.strictEqual(shaped.total, 2);
     assert.deepStrictEqual(shaped.untranslated.map((entry) => entry.key), ['checkout.pay', 'checkout.summary.total']);
+  });
+});
+
+describe('planFileExtractions', () => {
+  it('extracts several strings from one template in one pass', () => {
+    const source = '<button>Save</button><a>Cancel</a><span>Save</span>';
+    const { plan, outcomes } = planFileExtractions(source, [
+      { text: 'Save', key: 'actions.save' },
+      { text: 'Cancel', key: 'actions.cancel' }
+    ]);
+    assert.strictEqual(outcomes[0].extracted, 2); // both "Save" nodes
+    assert.strictEqual(outcomes[1].extracted, 1);
+    const applied = applyExtractionToText(source, plan);
+    assert.strictEqual(applied.includes("'actions.save' | translate"), true);
+    assert.strictEqual(applied.includes("'actions.cancel' | translate"), true);
+    assert.strictEqual(applied.includes('>Save<'), false);
+  });
+
+  it('reports zero extracted and no plan for text not present', () => {
+    const { plan, outcomes } = planFileExtractions('<p>Hello</p>', [{ text: 'Goodbye', key: 'x.bye' }]);
+    assert.strictEqual(outcomes[0].extracted, 0);
+    assert.strictEqual(plan.length, 0);
+  });
+
+  it('binds interpolation params and reports them', () => {
+    const source = '<p>Hello {{ name }}</p>';
+    const { plan, outcomes } = planFileExtractions(source, [{ text: 'Hello {{ name }}', key: 'greeting' }]);
+    assert.deepStrictEqual(outcomes[0].params, ['name']);
+    assert.strictEqual(plan[0].text, 'Hello {{ name }}');
+    assert.strictEqual(applyExtractionToText(source, plan).includes("translate:{ name }"), true);
+  });
+
+  it('never double-claims the same occurrence for two requests', () => {
+    const source = '<span>Close</span>';
+    const { plan } = planFileExtractions(source, [
+      { text: 'Close', key: 'a.close' },
+      { text: 'Close', key: 'b.close' }
+    ]);
+    assert.strictEqual(plan.length, 1); // one occurrence → claimed once
+    assert.strictEqual(plan[0].key, 'a.close');
   });
 });

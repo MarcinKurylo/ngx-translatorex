@@ -230,6 +230,33 @@
 				}
 			},
 			{
+				"name": "ngx-translatorex_extractStrings",
+				"displayName": "Extract hard-coded strings (batch)",
+				"toolReferenceName": "extractStrings",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Extract MANY hard-coded strings into i18n keys in ONE call (batch — prefer this over extractString when you have more than one). For each item, replaces every occurrence of the exact text with a `{{ 'key' | translate }}` pipe and adds the key across all language files. Omit an item's `files` to extract that text from EVERY template (common for shared buttons/labels). Choose meaningful, nested keys (e.g. 'checkout.summary.total'); reuse the same key for identical text. Returns per item how many occurrences were replaced and in which files.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"items": {
+							"type": "array",
+							"description": "Extractions to perform in this batch. Group everything you found into a single call.",
+							"items": {
+								"type": "object",
+								"properties": {
+									"text": { "type": "string", "description": "The exact hard-coded text to extract, as returned by the scan tool." },
+									"key": { "type": "string", "description": "The dotted i18n key to create, e.g. 'page.title'. Reuse for identical text." },
+									"files": { "type": "array", "items": { "type": "string" }, "description": "Optional workspace-relative .html paths; omit to extract this text from every template." }
+								},
+								"required": ["text", "key"]
+							}
+						}
+					},
+					"required": ["items"]
+				}
+			},
+			{
 				"name": "ngx-translatorex_listMissingTranslations",
 				"displayName": "List missing translations",
 				"toolReferenceName": "listMissingTranslations",

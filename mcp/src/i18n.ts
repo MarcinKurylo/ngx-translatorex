@@ -15,8 +15,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TranslationTree, findUntranslatedKeys, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
+import { findContainingCandidate, planFileExtractions, planSeed } from '../../src/utils/i18nToolUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
+import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
 
 const PROJECT_DIR = process.env.NGX_PROJECT_DIR || process.cwd();
 const I18N_DIR = process.env.NGX_I18N_DIR || path.join(PROJECT_DIR, 'src/assets/i18n');
@@ -25,7 +27,22 @@ const PLACEHOLDER = process.env.NGX_PLACEHOLDER || '[TODO] translation not imple
 const SORT_ON_SAVE = process.env.NGX_SORT_ON_SAVE === 'true';
 
 const EXCLUDED_DIRS = new Set(['node_modules', 'dist', '.angular', 'out', 'coverage', '.git']);
-const DETECTION = { minLength: 2, ignore: [] as string[] };
+
+/** Comma-separated env value → trimmed, non-empty list. */
+const parseList = (value: string | undefined): string[] =>
+  value ? value.split(',').map((entry) => entry.trim()).filter(Boolean) : [];
+
+/**
+ * Detection tuning, configurable so the MCP surface matches the extension's
+ * settings instead of hardcoding defaults:
+ *  - `NGX_HARDCODED_MIN_LENGTH`  minimum trimmed length (default `2`)
+ *  - `NGX_HARDCODED_IGNORE`      comma-separated literal/`*`-glob patterns to skip
+ * The inline `i18n-ignore` marker is honoured by the detector regardless.
+ */
+const DETECTION = {
+  minLength: process.env.NGX_HARDCODED_MIN_LENGTH ? Number(process.env.NGX_HARDCODED_MIN_LENGTH) : 2,
+  ignore: parseList(process.env.NGX_HARDCODED_IGNORE)
+};
 
 const languageFile = (language: string) => path.join(I18N_DIR, `${language}.json`);
 
@@ -72,15 +89,21 @@ const listTemplates = (): string[] => walk(['.html']);
 const listSourceFiles = (): string[] => walk(['.html', '.ts']);
 
 /** Scans one template (relative path) or all templates for hard-coded strings. */
-export const scan = (file?: string): { file: string; line: number; text: string }[] => {
+export const scan = (file?: string): { file: string; line: number; text: string; category: string; confidence: string }[] => {
   const files = file ? [path.resolve(PROJECT_DIR, file)] : listTemplates();
-  const findings: { file: string; line: number; text: string }[] = [];
+  const findings: { file: string; line: number; text: string; category: string; confidence: string }[] = [];
   for (const abs of files) {
     if (!fs.existsSync(abs)) {
       continue;
     }
     for (const candidate of locateHardcodedStrings(fs.readFileSync(abs, 'utf8'), DETECTION)) {
-      findings.push({ file: path.relative(PROJECT_DIR, abs), line: candidate.line, text: candidate.text });
+      findings.push({
+        file: path.relative(PROJECT_DIR, abs),
+        line: candidate.line,
+        text: candidate.text,
+        category: candidate.category,
+        confidence: candidate.confidence
+      });
     }
   }
   return findings;
@@ -91,7 +114,7 @@ export const scan = (file?: string): { file: string; line: number; text: string 
  * `translate` pipe and adds the key across all language files (real value in the
  * main language, placeholder elsewhere).
  */
-export const extract = (file: string, text: string, key: string): { key: string; extracted: number; params?: string[]; message?: string } => {
+export const extract = (file: string, text: string, key: string): { key: string; extracted: number; params?: string[]; message?: string; partial?: boolean; containingText?: string } => {
   const abs = path.resolve(PROJECT_DIR, file);
   if (!fs.existsSync(abs)) {
     return { key, extracted: 0, message: `File not found: ${file}` };
@@ -103,6 +126,10 @@ export const extract = (file: string, text: string, key: string): { key: string;
     .filter((candidate) => candidate.text === text)
     .map((candidate) => ({ index: candidate.index, length: candidate.length, text: value, key, snippet }));
   if (!plan.length) {
+    const containing = findContainingCandidate(source, text, DETECTION);
+    if (containing) {
+      return { key, extracted: 0, partial: true, containingText: containing.containingText, message: `That text is only a fragment of "${containing.containingText}" in ${file}. Extract that whole node instead (its {{ interpolation }} becomes a bound param).` };
+    }
     return { key, extracted: 0, message: `No hard-coded occurrence of that text found in ${file}` };
   }
   fs.writeFileSync(abs, applyExtractionToText(source, plan));
@@ -120,25 +147,120 @@ export const extract = (file: string, text: string, key: string): { key: string;
   return { key, extracted: plan.length, params: params.map((param) => param.name) };
 };
 
-/** Per secondary language, the keys missing or still placeholder, with their main-language source. */
-export const listMissing = (): { mainLanguage: string; languages: { language: string; untranslated: { key: string; source: string }[] }[] } => {
-  const mainFlat = flattenObject(readTree(MAIN_LANG));
-  const languages = listLanguages()
-    .filter((language) => language !== MAIN_LANG)
-    .map((language) => ({
-      language,
-      untranslated: findUntranslatedKeys(mainFlat, flattenObject(readTree(language)), PLACEHOLDER)
-        .map((key) => ({ key, source: mainFlat[key] }))
-    }));
-  return { mainLanguage: MAIN_LANG, languages };
+/** Adds keys to the language files: real value in the main language, placeholder elsewhere. One read/write per language. */
+const addKeysToLanguages = (entries: { key: string; value: string }[]): void => {
+  const unique = new Map(entries.map((entry) => [entry.key, entry.value]));
+  for (const language of listLanguages()) {
+    const tree = readTree(language);
+    let changed = false;
+    for (const [key, value] of unique) {
+      if (language === MAIN_LANG) {
+        setKey(tree, key, value);
+        changed = true;
+      } else if (flattenObject(tree)[key] === undefined) {
+        setKey(tree, key, PLACEHOLDER);
+        changed = true;
+      }
+    }
+    if (changed) {
+      writeTree(language, tree);
+    }
+  }
 };
+
+/**
+ * Batch variant of {@link extract}: replaces many exact texts across many
+ * templates in one call, then adds every extracted key to the language files.
+ * An item without `files` is applied to every template (the common case for
+ * shared buttons/labels). Returns, per item, how many occurrences were replaced
+ * and in which files.
+ */
+export const extractStrings = (
+  items: { text: string; key: string; files?: string[] }[]
+): { results: { key: string; text: string; extracted: number; files: string[]; params?: string[]; message?: string }[] } => {
+  const templates = listTemplates();
+  const perFile = new Map<string, { text: string; key: string; item: number }[]>();
+  items.forEach((item, index) => {
+    const files = item.files?.length
+      ? item.files.map((file) => path.resolve(PROJECT_DIR, file)).filter((abs) => fs.existsSync(abs))
+      : templates;
+    for (const abs of files) {
+      const list = perFile.get(abs) ?? [];
+      list.push({ text: item.text, key: item.key, item: index });
+      perFile.set(abs, list);
+    }
+  });
+
+  const accumulated = items.map(() => ({ extracted: 0, files: new Set<string>() }));
+  for (const [abs, requests] of perFile) {
+    const source = fs.readFileSync(abs, 'utf8');
+    const { plan, outcomes } = planFileExtractions(source, requests.map((request) => ({ text: request.text, key: request.key })), DETECTION);
+    if (plan.length) {
+      fs.writeFileSync(abs, applyExtractionToText(source, plan));
+    }
+    outcomes.forEach((outcome, position) => {
+      const index = requests[position].item;
+      accumulated[index].extracted += outcome.extracted;
+      if (outcome.extracted) {
+        accumulated[index].files.add(path.relative(PROJECT_DIR, abs));
+      }
+    });
+  }
+
+  addKeysToLanguages(
+    items
+      .filter((_, index) => accumulated[index].extracted > 0)
+      .map((item) => ({ key: item.key, value: normalizeInterpolation(item.text).value }))
+  );
+
+  return {
+    results: items.map((item, index) => {
+      const extracted = accumulated[index].extracted;
+      const params = normalizeInterpolation(item.text).params.map((param) => param.name);
+      return {
+        key: item.key,
+        text: item.text,
+        extracted,
+        files: [...accumulated[index].files],
+        ...(params.length ? { params } : {}),
+        ...(extracted === 0 ? { message: `No hard-coded occurrence of that exact text found` } : {})
+      };
+    })
+  };
+};
+
+/** Every key still needing translation across the secondary languages, as a flat list. */
+const collectUntranslated = (): UntranslatedItem[] => {
+  const mainFlat = flattenObject(readTree(MAIN_LANG));
+  return listLanguages()
+    .filter((language) => language !== MAIN_LANG)
+    .flatMap((language) =>
+      findUntranslatedKeys(mainFlat, flattenObject(readTree(language)), PLACEHOLDER)
+        .map((key) => ({ language, key, source: mainFlat[key] ?? null }))
+    );
+};
+
+/**
+ * Keys missing or still placeholder, with their main-language source. Defaults
+ * to a compact summary (counts + per-prefix histogram); pass `summary: false`
+ * with `prefix`/`language`/`limit`/`offset` for paginated detail. Keeping the
+ * default a summary stops a large project's blob from overflowing the agent's
+ * context window.
+ */
+export const listMissing = (options: ListMissingOptions = {}): (MissingSummary | MissingDetail) & { mainLanguage: string } => ({
+  mainLanguage: MAIN_LANG,
+  ...shapeMissingTranslations(collectUntranslated(), options)
+});
 
 /**
  * Writes many translations across language files, one read/write per file. Each
  * value is validated against the main-language source: one that drops a
  * `{{ param }}` is skipped rather than written.
  */
-export const setTranslations = (items: { language: string; key: string; value: string }[]): { written: number; skipped: number } => {
+export const setTranslations = (
+  items: { language: string; key: string; value: string }[],
+  options: { dryRun?: boolean } = {}
+): { written: number; skipped: number; dryRun?: boolean } => {
   const mainFlat = flattenObject(readTree(MAIN_LANG));
   const byLanguage = new Map<string, { language: string; tree: TranslationTree }>();
   const known = new Set(listLanguages());
@@ -159,10 +281,42 @@ export const setTranslations = (items: { language: string; key: string; value: s
     setKey(byLanguage.get(item.language)!.tree, item.key, item.value);
     written++;
   }
+  if (options.dryRun) {
+    return { written, skipped, dryRun: true };
+  }
   for (const { language, tree } of byLanguage.values()) {
     writeTree(language, tree);
   }
   return { written, skipped };
+};
+
+/**
+ * Fills secondary-language files with a starting value for every key they still
+ * lack — the placeholder, or the main-language source when `copySource` is set.
+ * Optional groundwork; not required for translating (setTranslations creates
+ * missing keys directly). `dryRun` reports the counts without writing.
+ */
+export const seedMissing = (
+  options: { copySource?: boolean; language?: string; dryRun?: boolean } = {}
+): { seeded: number; languages: { language: string; seeded: number }[]; dryRun?: boolean } => {
+  const mainFlat = flattenObject(readTree(MAIN_LANG));
+  const targets = listLanguages().filter(
+    (language) => language !== MAIN_LANG && (options.language === undefined || language === options.language)
+  );
+  const perLanguage: { language: string; seeded: number }[] = [];
+  for (const language of targets) {
+    const tree = readTree(language);
+    const plan = planSeed(mainFlat, flattenObject(tree), PLACEHOLDER, options.copySource ?? false);
+    for (const entry of plan) {
+      setKey(tree, entry.key, entry.value);
+    }
+    if (plan.length && !options.dryRun) {
+      writeTree(language, tree);
+    }
+    perLanguage.push({ language, seeded: plan.length });
+  }
+  const seeded = perLanguage.reduce((sum, entry) => sum + entry.seeded, 0);
+  return { seeded, languages: perLanguage, ...(options.dryRun ? { dryRun: true } : {}) };
 };
 
 /** Lists `translate` key references in templates/components that don't exist in the main language. */

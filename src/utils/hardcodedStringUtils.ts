@@ -15,6 +15,16 @@
 
 import { generateKey } from './translationUtils';
 
+/** Where a hard-coded string was found: a template text node or an attribute value. */
+export type HardcodedCategory = 'text' | 'attribute';
+
+/**
+ * Rough likelihood the candidate is genuine UI copy rather than a false
+ * positive: `high` for attribute values and multi-word/interpolated text,
+ * `low` for a single bare word (still worth flagging, more prone to noise).
+ */
+export type HardcodedConfidence = 'high' | 'low';
+
 /** A candidate hard-coded string found in template source text. */
 export interface HardcodedStringCandidate {
   /** The user-facing text (trimmed for text nodes, raw for attribute values). */
@@ -23,6 +33,10 @@ export interface HardcodedStringCandidate {
   index: number;
   /** Length of the text in characters. */
   length: number;
+  /** Whether the text came from a text node or a user-facing attribute value. */
+  category: HardcodedCategory;
+  /** Rough confidence the candidate is real UI copy — lets a caller filter noise. */
+  confidence: HardcodedConfidence;
 }
 
 /** Tuning options for {@link findHardcodedStrings}. */
@@ -127,7 +141,7 @@ export function findHardcodedStrings(
   const masked = maskBlocks(html);
   const candidates: HardcodedStringCandidate[] = [];
 
-  const consider = (rawText: string, rawIndex: number) => {
+  const consider = (rawText: string, rawIndex: number, category: HardcodedCategory) => {
     const leading = rawText.length - rawText.trimStart().length;
     const text = rawText.trim();
     const index = rawIndex + leading;
@@ -150,15 +164,16 @@ export function findHardcodedStrings(
     if (ignoreLines.has(line) || ignoreLines.has(line - 1)) {
       return;
     }
-    candidates.push({ text, index, length: text.length });
+    const confidence: HardcodedConfidence = category === 'attribute' || /\s/.test(text) ? 'high' : 'low';
+    candidates.push({ text, index, length: text.length, category, confidence });
   };
 
   for (const match of masked.matchAll(TEXT_NODE)) {
-    consider(match[1], match.index! + match[0].length - match[1].length);
+    consider(match[1], match.index! + match[0].length - match[1].length, 'text');
   }
   for (const match of masked.matchAll(TEXT_ATTRIBUTE)) {
     const valueOffset = match.index! + match[0].indexOf(match[1]) + 1;
-    consider(match[2], valueOffset);
+    consider(match[2], valueOffset, 'attribute');
   }
 
   return candidates.sort((a, b) => a.index - b.index);

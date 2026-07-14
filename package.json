@@ -201,7 +201,7 @@
 				"toolReferenceName": "scanHardcodedStrings",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Scan Angular HTML templates for hard-coded (untranslated) user-facing strings. Returns a JSON array of { file, line, text }. Call this first to discover what needs extracting. Optionally pass a single workspace-relative .html file to scan only that file.",
+				"modelDescription": "Scan Angular HTML templates for hard-coded (untranslated) user-facing strings. Returns a JSON array of { file, line, text, category, confidence } — category is 'text' (a text node) or 'attribute'; confidence is 'high'/'low'. Filter on these to skip likely false positives without opening files. Call this first to discover what needs extracting. Optionally pass a single workspace-relative .html file to scan only that file.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {
@@ -218,7 +218,7 @@
 				"toolReferenceName": "extractString",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Extract a hard-coded string from a template into an i18n key: replaces every hard-coded occurrence of the exact text in the file with a `{{ 'key' | translate }}` pipe and writes the key (with the text as its main-language value) across all language files. Choose a meaningful, nested key name (e.g. 'page.title', 'actions.save'). Returns the key and how many occurrences were replaced.",
+				"modelDescription": "Extract a hard-coded string from a template into an i18n key: replaces every hard-coded occurrence of the exact text in the file with a `{{ 'key' | translate }}` pipe and writes the key (with the text as its main-language value) across all language files. Choose a meaningful, nested key name (e.g. 'page.title', 'actions.save'). Returns the key and how many occurrences were replaced; when the text is not found exactly, returns partial:true with the containing node if your text is only a fragment of a larger (e.g. interpolated) node — extract that whole node instead.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {
@@ -230,13 +230,49 @@
 				}
 			},
 			{
+				"name": "ngx-translatorex_extractStrings",
+				"displayName": "Extract hard-coded strings (batch)",
+				"toolReferenceName": "extractStrings",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Extract MANY hard-coded strings into i18n keys in ONE call (batch — prefer this over extractString when you have more than one). For each item, replaces every occurrence of the exact text with a `{{ 'key' | translate }}` pipe and adds the key across all language files. Omit an item's `files` to extract that text from EVERY template (common for shared buttons/labels). Choose meaningful, nested keys (e.g. 'checkout.summary.total'); reuse the same key for identical text. Returns per item how many occurrences were replaced and in which files.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"items": {
+							"type": "array",
+							"description": "Extractions to perform in this batch. Group everything you found into a single call.",
+							"items": {
+								"type": "object",
+								"properties": {
+									"text": { "type": "string", "description": "The exact hard-coded text to extract, as returned by the scan tool." },
+									"key": { "type": "string", "description": "The dotted i18n key to create, e.g. 'page.title'. Reuse for identical text." },
+									"files": { "type": "array", "items": { "type": "string" }, "description": "Optional workspace-relative .html paths; omit to extract this text from every template." }
+								},
+								"required": ["text", "key"]
+							}
+						}
+					},
+					"required": ["items"]
+				}
+			},
+			{
 				"name": "ngx-translatorex_listMissingTranslations",
 				"displayName": "List missing translations",
 				"toolReferenceName": "listMissingTranslations",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "List, per secondary language, the i18n keys that are missing or still hold the untranslated placeholder, each with its main-language source text. Use this to know what to translate, then call setTranslations once with all the results (preferred), or setTranslation for a single key.",
-				"inputSchema": { "type": "object", "properties": {} }
+				"modelDescription": "List i18n keys that are missing or still hold the untranslated placeholder, with their main-language source text. Call with summary:true (default) FIRST — it returns per-language and per-prefix counts only (no source blobs), safe on large projects; then pull details with summary:false plus prefix/language/limit/offset. Never request the full unprefixed detail on a large project — it can overflow the context window. Then translate and call setTranslations once with all the results (preferred).",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"summary": { "type": "boolean", "description": "Default true: return counts + per-prefix histogram only. Set false for key/source detail (use with prefix/limit)." },
+						"prefix": { "type": "string", "description": "Only keys equal to or nested under this dotted prefix, e.g. 'checkout'." },
+						"language": { "type": "string", "description": "Only this secondary language code." },
+						"limit": { "type": "number", "description": "Detail mode: max entries to return (default 100)." },
+						"offset": { "type": "number", "description": "Detail mode: entries to skip, for pagination." }
+					}
+				}
 			},
 			{
 				"name": "ngx-translatorex_setTranslation",
@@ -261,7 +297,7 @@
 				"toolReferenceName": "setTranslations",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "Write many translations at once, across one or more language files, in a single operation. Prefer this over setTranslation when filling multiple keys (e.g. after listMissingTranslations). Preserve any {{ interpolation }} tokens exactly — a value that drops a param present in the source is rejected and reported as skipped. Returns how many entries were written and skipped.",
+				"modelDescription": "Write many translations at once, across one or more language files, in a single operation. Prefer this over setTranslation when filling multiple keys (e.g. after listMissingTranslations). Preserve any {{ interpolation }} tokens exactly — a value that drops a param present in the source is rejected and reported as skipped. Pass dryRun:true to preview the written/skipped counts without writing. Returns how many entries were written and skipped.",
 				"inputSchema": {
 					"type": "object",
 					"properties": {
@@ -277,9 +313,26 @@
 								},
 								"required": ["language", "key", "value"]
 							}
-						}
+						},
+						"dryRun": { "type": "boolean", "description": "Preview only: validate and count without writing files." }
 					},
 					"required": ["translations"]
+				}
+			},
+			{
+				"name": "ngx-translatorex_seedMissingTranslations",
+				"displayName": "Seed missing translations",
+				"toolReferenceName": "seedMissingTranslations",
+				"canBeReferencedInPrompt": true,
+				"tags": ["ngx-translate", "i18n", "angular"],
+				"modelDescription": "Fill secondary-language files with a starting value for every key they still lack — the placeholder ([TODO]) or a copy of the main-language source (copySource:true). Optional groundwork; NOT required for translating, since setTranslations creates missing keys directly. Pass dryRun:true to preview. Returns how many keys were seeded per language.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"copySource": { "type": "boolean", "description": "Seed with the main-language source text instead of the [TODO] placeholder." },
+						"language": { "type": "string", "description": "Only seed this secondary language; omit for all." },
+						"dryRun": { "type": "boolean", "description": "Preview only: count what would be seeded without writing." }
+					}
 				}
 			},
 			{

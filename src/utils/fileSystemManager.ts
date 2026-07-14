@@ -4,6 +4,7 @@ import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
 import { TranslationTree, deleteKey, findUntranslatedKeys, flattenObject, renameKey, setKey, sortObject } from './translationUtils';
 import { paramsPreserved } from './translationLmUtils';
+import { planSeed } from './i18nToolUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
@@ -346,8 +347,9 @@ export class FileSystemManager {
    * `skipped` — entries rejected for losing a param.
    */
   public static async setTranslations(
-    items: { language: string; key: string; value: string }[]
-  ): Promise<{ saved: boolean; written: number; skipped: number }> {
+    items: { language: string; key: string; value: string }[],
+    options: { dryRun?: boolean } = {}
+  ): Promise<{ saved: boolean; written: number; skipped: number; dryRun?: boolean }> {
     try {
       const uris = await FileSystemManager.getLanguageUris();
       const uriByLanguage = new Map<string, vscode.Uri>();
@@ -374,12 +376,19 @@ export class FileSystemManager {
         if (!trees.has(key)) {
           trees.set(key, { uri, tree: await FileSystemManager.readJson(uri) });
         }
+        if (options.dryRun) {
+          written++;
+          continue;
+        }
         setKey(trees.get(key)!.tree, item.key, item.value);
         if (item.language === mainLanguage) {
           FileSystemManager.cache[item.key] = item.value;
           mainChanged = true;
         }
         written++;
+      }
+      if (options.dryRun) {
+        return { saved: true, written, skipped, dryRun: true };
       }
       for (const { uri, tree } of trees.values()) {
         await FileSystemManager.writeJson(uri, tree);
@@ -391,6 +400,48 @@ export class FileSystemManager {
     } catch (e) {
       NotificationManager.showErrorMessage('Save json failed');
       return { saved: false, written: 0, skipped: 0 };
+    }
+  }
+
+  /**
+   * Fills each secondary-language file with a starting value for every key it
+   * still lacks (missing or placeholder) — the placeholder, or a copy of the
+   * main-language source when `copySource` is set. Optional groundwork before
+   * translating; `setTranslations` also creates missing keys directly. Bypasses
+   * the param check on purpose so a `[TODO]` seed can land on `{{ param }}` keys.
+   *
+   * @returns `saved` — whether writes succeeded; `seeded` — total keys seeded;
+   * `languages` — per-language counts; `dryRun` when nothing was written.
+   */
+  public static async seedMissingTranslations(
+    options: { copySource?: boolean; language?: string; dryRun?: boolean } = {}
+  ): Promise<{ saved: boolean; seeded: number; languages: { language: string; seeded: number }[]; dryRun?: boolean }> {
+    try {
+      const uris = await FileSystemManager.getLanguageUris();
+      const mainLanguage = ExtensionConfigManager.getConfigValue('language') ?? 'en';
+      const placeholder = ExtensionConfigManager.getPlaceholder();
+      const mainFlat = flattenObject(await FileSystemManager.readJson(await FileSystemManager.getUri()));
+      const languages: { language: string; seeded: number }[] = [];
+      for (const uri of uris) {
+        const language = uri.path.split('/').pop()!.replace(/\.json$/, '');
+        if (language === mainLanguage || (options.language !== undefined && language !== options.language)) {
+          continue;
+        }
+        const tree = await FileSystemManager.readJson(uri);
+        const plan = planSeed(mainFlat, flattenObject(tree), placeholder, options.copySource ?? false);
+        for (const entry of plan) {
+          setKey(tree, entry.key, entry.value);
+        }
+        if (plan.length && !options.dryRun) {
+          await FileSystemManager.writeJson(uri, tree);
+        }
+        languages.push({ language, seeded: plan.length });
+      }
+      const seeded = languages.reduce((sum, entry) => sum + entry.seeded, 0);
+      return { saved: true, seeded, languages, ...(options.dryRun ? { dryRun: true } : {}) };
+    } catch (e) {
+      NotificationManager.showErrorMessage('Save json failed');
+      return { saved: false, seeded: 0, languages: [] };
     }
   }
 

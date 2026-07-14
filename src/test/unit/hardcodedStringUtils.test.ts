@@ -94,6 +94,27 @@ describe('findHardcodedStrings', () => {
     assert.ok(found[0].index < found[1].index);
   });
 
+  describe('category and confidence', () => {
+    it('tags text nodes vs attribute values', () => {
+      const html = '<h1>Welcome home</h1><input title="Full name">';
+      const found = findHardcodedStrings(html);
+      assert.strictEqual(found.find((c) => c.text === 'Welcome home')!.category, 'text');
+      assert.strictEqual(found.find((c) => c.text === 'Full name')!.category, 'attribute');
+    });
+
+    it('rates multi-word text and attribute values high, a bare word low', () => {
+      const found = findHardcodedStrings('<h1>Welcome home</h1><a>Save</a><input title="Go">');
+      assert.strictEqual(found.find((c) => c.text === 'Welcome home')!.confidence, 'high');
+      assert.strictEqual(found.find((c) => c.text === 'Save')!.confidence, 'low');
+      assert.strictEqual(found.find((c) => c.text === 'Go')!.confidence, 'high'); // attribute → high
+    });
+
+    it('rates interpolated (mixed) text high', () => {
+      const [candidate] = findHardcodedStrings('<p>Hello {{ name }}</p>');
+      assert.strictEqual(candidate.confidence, 'high');
+    });
+  });
+
   describe('edge cases', () => {
     it('returns nothing for empty or whitespace-only input', () => {
       assert.deepStrictEqual(findHardcodedStrings(''), []);

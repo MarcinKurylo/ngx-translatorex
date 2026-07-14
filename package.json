@@ -235,8 +235,17 @@
 				"toolReferenceName": "listMissingTranslations",
 				"canBeReferencedInPrompt": true,
 				"tags": ["ngx-translate", "i18n", "angular"],
-				"modelDescription": "List, per secondary language, the i18n keys that are missing or still hold the untranslated placeholder, each with its main-language source text. Use this to know what to translate, then call setTranslations once with all the results (preferred), or setTranslation for a single key.",
-				"inputSchema": { "type": "object", "properties": {} }
+				"modelDescription": "List i18n keys that are missing or still hold the untranslated placeholder, with their main-language source text. Call with summary:true (default) FIRST — it returns per-language and per-prefix counts only (no source blobs), safe on large projects; then pull details with summary:false plus prefix/language/limit/offset. Never request the full unprefixed detail on a large project — it can overflow the context window. Then translate and call setTranslations once with all the results (preferred).",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"summary": { "type": "boolean", "description": "Default true: return counts + per-prefix histogram only. Set false for key/source detail (use with prefix/limit)." },
+						"prefix": { "type": "string", "description": "Only keys equal to or nested under this dotted prefix, e.g. 'checkout'." },
+						"language": { "type": "string", "description": "Only this secondary language code." },
+						"limit": { "type": "number", "description": "Detail mode: max entries to return (default 100)." },
+						"offset": { "type": "number", "description": "Detail mode: entries to skip, for pagination." }
+					}
+				}
 			},
 			{
 				"name": "ngx-translatorex_setTranslation",

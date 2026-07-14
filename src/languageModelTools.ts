@@ -6,6 +6,7 @@ import { FileSystemManager } from './utils/fileSystemManager';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation, PlannedExtraction } from './utils/hardcodedStringUtils';
 import { findTranslateKeys } from './utils/diagnosticsUtils';
 import { buildTranslationReport, flattenObject } from './utils/translationUtils';
+import { ListMissingOptions, UntranslatedItem, shapeMissingTranslations } from './utils/i18nToolUtils';
 
 /** Tool names, namespaced under the extension id (must match package.json contributions). */
 const TOOL = {
@@ -104,24 +105,30 @@ export class LanguageModelTools {
     };
   }
 
-  /** Tool: list, per secondary language, the keys that are missing or still untranslated, with their source text. */
-  private static listMissingTool(): vscode.LanguageModelTool<Record<string, never>> {
+  /**
+   * Tool: keys missing or still untranslated, with their source text. Defaults
+   * to a compact summary (counts + per-prefix histogram); `summary: false` with
+   * `prefix`/`language`/`limit`/`offset` returns paginated detail — so a large
+   * catalogue never dumps its whole blob into the agent's context.
+   */
+  private static listMissingTool(): vscode.LanguageModelTool<ListMissingOptions> {
     return {
-      invoke: async () => {
+      invoke: async (options) => {
         const languages = await FileSystemManager.getAllLanguageTranslations();
         const mainLanguage = ExtensionConfigManager.getConfigValue('language') ?? 'en';
         const mainEntry = languages.find((entry) => entry.language === mainLanguage);
         const mainFlat = mainEntry ? flattenObject(mainEntry.tree) : {};
         const placeholder = ExtensionConfigManager.getPlaceholder();
-        const withSource = (key: string) => ({ key, source: mainFlat[key] ?? null });
-        const reports = buildTranslationReport(languages, placeholder)
+        const items: UntranslatedItem[] = buildTranslationReport(languages, placeholder)
           .filter((report) => report.language !== mainLanguage)
-          .map((report) => ({
-            language: report.language,
-            missing: report.missing.map(withSource),
-            untranslated: report.untranslated.map(withSource)
-          }));
-        return result({ mainLanguage, languages: reports });
+          .flatMap((report) =>
+            [...report.missing, ...report.untranslated].map((key) => ({
+              language: report.language,
+              key,
+              source: mainFlat[key] ?? null
+            }))
+          );
+        return result({ mainLanguage, ...shapeMissingTranslations(items, options.input) });
       }
     };
   }

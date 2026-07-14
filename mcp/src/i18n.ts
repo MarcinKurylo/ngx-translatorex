@@ -17,6 +17,7 @@ import { TranslationTree, findUntranslatedKeys, flattenObject, setKey, sortObjec
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
+import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
 
 const PROJECT_DIR = process.env.NGX_PROJECT_DIR || process.cwd();
 const I18N_DIR = process.env.NGX_I18N_DIR || path.join(PROJECT_DIR, 'src/assets/i18n');
@@ -120,18 +121,28 @@ export const extract = (file: string, text: string, key: string): { key: string;
   return { key, extracted: plan.length, params: params.map((param) => param.name) };
 };
 
-/** Per secondary language, the keys missing or still placeholder, with their main-language source. */
-export const listMissing = (): { mainLanguage: string; languages: { language: string; untranslated: { key: string; source: string }[] }[] } => {
+/** Every key still needing translation across the secondary languages, as a flat list. */
+const collectUntranslated = (): UntranslatedItem[] => {
   const mainFlat = flattenObject(readTree(MAIN_LANG));
-  const languages = listLanguages()
+  return listLanguages()
     .filter((language) => language !== MAIN_LANG)
-    .map((language) => ({
-      language,
-      untranslated: findUntranslatedKeys(mainFlat, flattenObject(readTree(language)), PLACEHOLDER)
-        .map((key) => ({ key, source: mainFlat[key] }))
-    }));
-  return { mainLanguage: MAIN_LANG, languages };
+    .flatMap((language) =>
+      findUntranslatedKeys(mainFlat, flattenObject(readTree(language)), PLACEHOLDER)
+        .map((key) => ({ language, key, source: mainFlat[key] ?? null }))
+    );
 };
+
+/**
+ * Keys missing or still placeholder, with their main-language source. Defaults
+ * to a compact summary (counts + per-prefix histogram); pass `summary: false`
+ * with `prefix`/`language`/`limit`/`offset` for paginated detail. Keeping the
+ * default a summary stops a large project's blob from overflowing the agent's
+ * context window.
+ */
+export const listMissing = (options: ListMissingOptions = {}): (MissingSummary | MissingDetail) & { mainLanguage: string } => ({
+  mainLanguage: MAIN_LANG,
+  ...shapeMissingTranslations(collectUntranslated(), options)
+});
 
 /**
  * Writes many translations across language files, one read/write per file. Each

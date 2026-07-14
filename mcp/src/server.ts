@@ -37,8 +37,17 @@ const tools = [
   },
   {
     name: 'listMissingTranslations',
-    description: 'Per secondary language, list keys that are missing or still hold the placeholder, each with its main-language source text. Then translate and write them with setTranslations in one batched call.',
-    inputSchema: { type: 'object', properties: {} }
+    description: 'List keys that are missing or still hold the placeholder, with their main-language source. Call with summary:true (default) FIRST — it returns per-language and per-prefix counts only (no source blobs), safe on large projects. Then pull details with summary:false plus `prefix`/`language`/`limit`/`offset`. Never request the full detail unprefixed on a large project — it can overflow the context window. Then translate and write with setTranslations in one batched call.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        summary: { type: 'boolean', description: 'Default true: return counts + per-prefix histogram only. Set false to get key/source detail (use with prefix/limit).' },
+        prefix: { type: 'string', description: 'Only keys equal to or nested under this dotted prefix (e.g. "checkout").' },
+        language: { type: 'string', description: 'Only this secondary language code.' },
+        limit: { type: 'number', description: 'Detail mode: max entries to return (default 100).' },
+        offset: { type: 'number', description: 'Detail mode: entries to skip, for pagination.' }
+      }
+    }
   },
   {
     name: 'listUndefinedKeys',
@@ -118,7 +127,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         data = i18n.extract(args.file as string, args.text as string, args.key as string);
         break;
       case 'listMissingTranslations':
-        data = i18n.listMissing();
+        data = i18n.listMissing({
+          summary: args.summary as boolean | undefined,
+          prefix: args.prefix as string | undefined,
+          language: args.language as string | undefined,
+          limit: args.limit as number | undefined,
+          offset: args.offset as number | undefined
+        });
         break;
       case 'listUndefinedKeys':
         data = i18n.listUndefinedKeys();

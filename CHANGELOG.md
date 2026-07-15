@@ -2,6 +2,26 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [0.8.1]
+
+- Security: hardened the agent surfaces against untrusted input. An agent driving
+  these tools reasons over text scanned out of the project's own templates, so a
+  template can carry an instruction that steers it into passing a path or key of
+  its own — the tools now treat both as untrusted.
+  - The MCP server confined every agent-supplied file path to the project root.
+    `scanHardcodedStrings` / `extractString` / `extractStrings` accepted `../`
+    and absolute paths, which let a file anywhere on disk be read and, on the
+    extract paths, rewritten. Paths are now contained (and restricted to the
+    `.html` the tool schemas already declare), symlinks resolved first.
+  - Hard-coded scans no longer follow a symlinked template out of the project, so
+    an in-repo link can't leak a file from elsewhere on disk into the agent's
+    context.
+  - Translation keys addressing the prototype chain (`__proto__.foo`) are
+    rejected. Such a key polluted `Object.prototype` for the whole process —
+    including the VS Code extension host, which is shared with other extensions.
+  - The agent path now validates keys with the same rule as the interactive path,
+    and reports a rejected entry as `skipped` rather than counting it written.
+
 ## [0.8.0]
 
 - Agent tooling is now efficient at scale — the in-editor Language Model tools and

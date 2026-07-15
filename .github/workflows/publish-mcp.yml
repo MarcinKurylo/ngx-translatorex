@@ -1,9 +1,11 @@
 name: Publish MCP
 
 # Publishes the standalone MCP server (mcp/) to npm when an `mcp-v*` tag is
-# pushed. The dist-tag is derived from the version: a prerelease version
-# (e.g. 0.1.0-preview.0) publishes under `preview`, a clean version under
-# `latest`. Requires an `NPM_TOKEN` repository secret (npm automation token).
+# pushed. The dist-tag is derived from the version: a clean version publishes
+# under `latest`, a prerelease (e.g. 0.1.0-preview.2) under `preview` — and,
+# while no stable release exists, under `latest` as well, so a bare `npx` is
+# never left pinned to an old preview. Requires an `NPM_TOKEN` repository
+# secret (npm automation token, or a granular token with 2FA bypass).
 on:
   push:
     tags:
@@ -42,8 +44,40 @@ jobs:
       - name: Publish to npm
         working-directory: mcp
         run: |
-          DIST_TAG="$(node -p "require('./package.json').version.includes('-') ? 'preview' : 'latest'")"
-          echo "Publishing $(node -p "require('./package.json').version") with dist-tag: $DIST_TAG"
-          npm publish --tag "$DIST_TAG"
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+
+          # No hyphen → a clean version. It owns `latest` outright.
+          if [ "${VERSION#*-}" = "$VERSION" ]; then
+            echo "Publishing stable $VERSION with dist-tag: latest"
+            npm publish --tag latest
+            exit 0
+          fi
+
+          echo "Publishing prerelease $VERSION with dist-tag: preview"
+          npm publish --tag preview
+
+          # npm forces `latest` onto whatever is published first and never moves
+          # it for a prerelease. While `preview` is the only channel this package
+          # has, that leaves `latest` — what a bare `npx`/`npm install` resolves —
+          # stuck on the very first preview ever cut. So move it here. Once a
+          # stable version exists it owns `latest`, and a later prerelease must
+          # not take it back off them.
+          STABLE_EXISTS="$(npm view "$NAME" versions --json 2>/dev/null | node -e '
+            let raw = "";
+            process.stdin.on("data", (chunk) => (raw += chunk));
+            process.stdin.on("end", () => {
+              // A single published version comes back as a bare string, not an array.
+              const versions = raw.trim() ? [].concat(JSON.parse(raw)) : [];
+              console.log(versions.some((version) => !version.includes("-")) ? "yes" : "no");
+            });
+          ')"
+
+          if [ "$STABLE_EXISTS" = "no" ]; then
+            echo "No stable release exists — moving latest to $VERSION"
+            npm dist-tag add "$NAME@$VERSION" latest
+          else
+            echo "A stable release owns latest — leaving it untouched"
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

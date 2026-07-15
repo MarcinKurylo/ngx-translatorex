@@ -5,7 +5,7 @@ import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
 import { PlannedExtraction, applyExtractionToText, findHardcodedStrings, interpolationSnippet, normalizeInterpolation } from './utils/hardcodedStringUtils';
 import { findTranslateKeys } from './utils/diagnosticsUtils';
-import { ListMissingOptions, collectUntranslatedItems, findContainingCandidate, planFileExtractions, shapeMissingTranslations } from './utils/i18nToolUtils';
+import { ListMissingOptions, collectUntranslatedItems, findContainingCandidate, planFileExtractions, rejectKeyCreation, rejectionMessage, shapeMissingTranslations } from './utils/i18nToolUtils';
 
 /** Tool names, namespaced under the extension id (must match package.json contributions). */
 const TOOL = {
@@ -87,6 +87,11 @@ export class LanguageModelTools {
         if (!uri) {
           return result({ extracted: 0, message: `File not found: ${file}` });
         }
+        // Before the template is touched — same rule, same wording as the MCP server.
+        const rejection = rejectKeyCreation(key, await FileSystemManager.fetchJson());
+        if (rejection) {
+          return result({ key, extracted: 0, message: rejectionMessage(rejection, key) });
+        }
         const decoder = new TextDecoder();
         const source = decoder.decode(await vscode.workspace.fs.readFile(uri));
         const { value, params } = normalizeInterpolation(text);
@@ -135,8 +140,15 @@ export class LanguageModelTools {
         const encoder = new TextEncoder();
         const detection = detectionOptions();
         const allTemplates = await vscode.workspace.findFiles('**/*.html', HTML_SCAN_EXCLUDE);
+        // Settled up front, against the main language, so a bad key in the batch
+        // costs nothing and the templates are never half-rewritten.
+        const mainTree = await FileSystemManager.fetchJson();
+        const rejections = items.map((item) => rejectKeyCreation(item.key, mainTree));
         const perFile = new Map<string, { uri: vscode.Uri; requests: { text: string; key: string; item: number }[] }>();
         for (let index = 0; index < items.length; index++) {
+          if (rejections[index]) {
+            continue;
+          }
           const item = items[index];
           const uris = item.files?.length
             ? (await Promise.all(item.files.map((file) => vscode.workspace.findFiles(file, undefined, 1)))).flatMap((found) => found.slice(0, 1))
@@ -182,13 +194,19 @@ export class LanguageModelTools {
           results: items.map((item, index) => {
             const extracted = accumulated[index].extracted;
             const params = normalizeInterpolation(item.text).params.map((param) => param.name);
+            const rejection = rejections[index];
+            const message = rejection
+              ? rejectionMessage(rejection, item.key)
+              : extracted === 0
+                ? 'No hard-coded occurrence of that exact text found'
+                : undefined;
             return {
               key: item.key,
               text: item.text,
               extracted,
               files: [...accumulated[index].files],
               ...(params.length ? { params } : {}),
-              ...(extracted === 0 ? { message: 'No hard-coded occurrence of that exact text found' } : {})
+              ...(message ? { message } : {})
             };
           })
         });
@@ -227,13 +245,12 @@ export class LanguageModelTools {
           message: `Set \`${options.input.key}\` = “${options.input.value}” in \`${options.input.language}.json\`?`
         }
       }),
+      // Routed through the batch path rather than a write of its own: this tool
+      // used to skip the param, key and conflict checks the batch tool applies,
+      // so the same request was safe in a batch of two and unguarded on its own.
       invoke: async (options) => {
-        const saved = await FileSystemManager.setTranslationForLanguage(
-          options.input.language,
-          options.input.key,
-          options.input.value
-        );
-        return result({ saved });
+        const { written, skipped, saved } = await FileSystemManager.setTranslations([options.input]);
+        return result({ saved: saved && written === 1, written, skipped });
       }
     };
   }

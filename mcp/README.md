@@ -68,6 +68,7 @@ The server is pointed at a project via environment variables. Only
 | `NGX_I18N_DIR` | `<root>/src/assets/i18n` | Folder holding `<lang>.json` files |
 | `NGX_MAIN_LANG` | `en` | Main language code (the source of truth) |
 | `NGX_PLACEHOLDER` | `[TODO] translation not implemented` | Untranslated-key placeholder |
+| `NGX_SYNC_LANGUAGES` | `true` | Set to `false` to write a new key only into the main language, instead of placeholding it across all of them |
 | `NGX_SORT_ON_SAVE` | `false` | Set to `true` to alphabetically sort each i18n file on write |
 | `NGX_HARDCODED_MIN_LENGTH` | `2` | Minimum trimmed length for a scanned hard-coded string |
 | `NGX_HARDCODED_IGNORE` | (none) | Comma-separated literal/`*`-glob patterns to skip during the scan |

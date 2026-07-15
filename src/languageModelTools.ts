@@ -5,7 +5,7 @@ import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
 import { PlannedExtraction, applyExtractionToText, findHardcodedStrings, interpolationSnippet, normalizeInterpolation } from './utils/hardcodedStringUtils';
 import { findTranslateKeys } from './utils/diagnosticsUtils';
-import { ListMissingOptions, collectUntranslatedItems, findContainingCandidate, planFileExtractions, rejectKeyCreation, rejectionMessage, shapeMissingTranslations } from './utils/i18nToolUtils';
+import { ListMissingOptions, collectUntranslatedItems, findContainingCandidate, isTemplatePath, planFileExtractions, rejectKeyCreation, rejectionMessage, shapeMissingTranslations } from './utils/i18nToolUtils';
 
 /** Tool names, namespaced under the extension id (must match package.json contributions). */
 const TOOL = {
@@ -83,6 +83,9 @@ export class LanguageModelTools {
       }),
       invoke: async (options) => {
         const { file, text, key } = options.input;
+        if (!isTemplatePath(file)) {
+          return result({ key, extracted: 0, message: `Expected a workspace-relative .html path, got "${file}".` });
+        }
         const uri = (await vscode.workspace.findFiles(file, undefined, 1))[0];
         if (!uri) {
           return result({ extracted: 0, message: `File not found: ${file}` });
@@ -151,7 +154,7 @@ export class LanguageModelTools {
           }
           const item = items[index];
           const uris = item.files?.length
-            ? (await Promise.all(item.files.map((file) => vscode.workspace.findFiles(file, undefined, 1)))).flatMap((found) => found.slice(0, 1))
+            ? (await Promise.all(item.files.filter(isTemplatePath).map((file) => vscode.workspace.findFiles(file, undefined, 1)))).flatMap((found) => found.slice(0, 1))
             : allTemplates;
           for (const uri of uris) {
             const entry = perFile.get(uri.toString()) ?? { uri, requests: [] };
@@ -352,6 +355,9 @@ export class LanguageModelTools {
       }
     };
     if (file) {
+      if (!isTemplatePath(file)) {
+        return findings; // Not a template — the same request the MCP server refuses.
+      }
       const uri = (await vscode.workspace.findFiles(file, undefined, 1))[0];
       if (uri) {
         collect(uri, decoder.decode(await vscode.workspace.fs.readFile(uri)));

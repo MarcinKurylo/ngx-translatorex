@@ -37,6 +37,17 @@ export function resolveContainedPath(root: string, file: string): string | undef
   return abs === base || abs.startsWith(base + path.sep) ? abs : undefined;
 }
 
+/**
+ * Whether a caller-supplied template path is one the tools accept. Both agent
+ * surfaces declare a "project-relative .html path", so both enforce it: the MCP
+ * server resolves it on disk, the extension hands it to `findFiles`, and only a
+ * shared predicate keeps the two from promising the same thing and checking
+ * differently. A glob still qualifies — `**\/home.component.html` ends in `.html`.
+ */
+export function isTemplatePath(file: string): boolean {
+  return file.endsWith('.html');
+}
+
 /** Why an agent's translation write was refused. */
 export type WriteRejection = 'invalid-key' | 'params-lost' | 'key-conflict';
 

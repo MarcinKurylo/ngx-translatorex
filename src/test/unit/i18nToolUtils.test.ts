@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as path from 'path';
 import {
   MissingDetail,
   MissingSummary,
@@ -6,6 +7,7 @@ import {
   findContainingCandidate,
   planFileExtractions,
   planSeed,
+  resolveContainedPath,
   shapeMissingTranslations
 } from '../../utils/i18nToolUtils';
 import { applyExtractionToText } from '../../utils/hardcodedStringUtils';
@@ -161,5 +163,48 @@ describe('planSeed', () => {
   it('returns nothing when the language is fully translated', () => {
     const language = { 'a.one': 'Jeden', 'a.two': 'Dwa', 'a.three': 'Trzy' };
     assert.deepStrictEqual(planSeed(main, language, PLACEHOLDER, false), []);
+  });
+});
+
+describe('resolveContainedPath', () => {
+  const root = path.resolve('/workspace/project');
+
+  it('resolves a project-relative path to an absolute one', () => {
+    assert.strictEqual(
+      resolveContainedPath(root, 'src/app/home.component.html'),
+      path.join(root, 'src/app/home.component.html')
+    );
+  });
+
+  it('allows an inner traversal that stays inside the root', () => {
+    assert.strictEqual(
+      resolveContainedPath(root, 'src/app/../home.html'),
+      path.join(root, 'src/home.html')
+    );
+  });
+
+  it('allows the root itself', () => {
+    assert.strictEqual(resolveContainedPath(root, '.'), root);
+  });
+
+  it('allows an absolute path that lies inside the root', () => {
+    const inside = path.join(root, 'src/home.html');
+    assert.strictEqual(resolveContainedPath(root, inside), inside);
+  });
+
+  it('rejects a traversal that escapes the root', () => {
+    assert.strictEqual(resolveContainedPath(root, '../../../../etc/passwd'), undefined);
+  });
+
+  it('rejects an absolute path outside the root, which resolve would honour verbatim', () => {
+    assert.strictEqual(resolveContainedPath(root, path.resolve('/etc/passwd')), undefined);
+  });
+
+  it('rejects a sibling directory sharing the root as a name prefix', () => {
+    assert.strictEqual(resolveContainedPath(root, '../project-evil/x.html'), undefined);
+  });
+
+  it('rejects a path that escapes only after normalisation', () => {
+    assert.strictEqual(resolveContainedPath(root, 'src/../../outside/x.html'), undefined);
   });
 });

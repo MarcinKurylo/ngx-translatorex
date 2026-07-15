@@ -2,9 +2,11 @@
  * Pure, VS Code-independent helpers shared by the two agent surfaces — the
  * in-editor Language Model tools (`languageModelTools.ts`) and the standalone
  * MCP server (`mcp/src/i18n.ts`). Kept free of the `vscode` and `fs` modules so
- * the token-efficiency logic can be unit-tested directly.
+ * the token-efficiency logic can be unit-tested directly. (`path` is pure
+ * string arithmetic — no I/O — so it stays within that rule.)
  */
 
+import * as path from 'path';
 import {
   HardcodedStringOptions,
   PlannedExtraction,
@@ -13,6 +15,26 @@ import {
   normalizeInterpolation
 } from './hardcodedStringUtils';
 import { findUntranslatedKeys } from './translationUtils';
+
+/**
+ * Resolves a caller-supplied path against a root and returns it only when it
+ * stays inside that root, `undefined` otherwise.
+ *
+ * The agent surfaces take file paths straight from the model, which is not a
+ * trusted source: the server hands the model text scanned out of the project's
+ * own templates, so a path can carry an instruction injected into a template.
+ * Containment has to be asserted *after* resolving, because `path.resolve`
+ * honours both `../` and an absolute path (which discards the root entirely) —
+ * inspecting the raw input for `..` is not equivalent.
+ *
+ * Comparison is lexical, so the caller is responsible for resolving symlinks
+ * first when the path may be one.
+ */
+export function resolveContainedPath(root: string, file: string): string | undefined {
+  const base = path.resolve(root);
+  const abs = path.resolve(base, file);
+  return abs === base || abs.startsWith(base + path.sep) ? abs : undefined;
+}
 
 /**
  * Plans a starting value for every key a secondary language still lacks

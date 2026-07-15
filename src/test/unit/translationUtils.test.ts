@@ -454,3 +454,69 @@ describe('prototype-chain key safety', () => {
     assert.deepStrictEqual(tree, { page: { constructors: 'Builders' } });
   });
 });
+
+describe('setKey nesting under an existing leaf', () => {
+  it('does not destroy a real translation when overwrite is false', () => {
+    // The secondary-language sync path: adding `greeting.formal` must not cost
+    // the translator the existing `greeting` value.
+    const tree: TranslationTree = { greeting: 'Witaj' };
+    const result = setKey(tree, 'greeting.formal', '[TODO]', { overwrite: false });
+    assert.deepStrictEqual(result, { overwritten: false, written: false });
+    assert.deepStrictEqual(tree, { greeting: 'Witaj' });
+  });
+
+  it('reports written false so the caller does not persist a no-op', () => {
+    const tree: TranslationTree = { a: { b: 'kept' } };
+    assert.strictEqual(setKey(tree, 'a.b.c', 'x', { overwrite: false }).written, false);
+    assert.deepStrictEqual(tree, { a: { b: 'kept' } });
+  });
+
+  it('still nests normally when the segment is a subtree or absent', () => {
+    const tree: TranslationTree = { greeting: { casual: 'Cześć' } };
+    assert.strictEqual(setKey(tree, 'greeting.formal', '[TODO]', { overwrite: false }).written, true);
+    assert.deepStrictEqual(tree, { greeting: { casual: 'Cześć', formal: '[TODO]' } });
+  });
+
+  it('reports overwritten when a leaf gives way to a subtree, so the user is warned', () => {
+    // The only signal behind commands.ts's "Existing i18n key overwritten"
+    // message; without it the main language drops a value in silence.
+    const tree: TranslationTree = { greeting: 'Hello' };
+    const result = setKey(tree, 'greeting.formal', 'Good day');
+    assert.strictEqual(result.overwritten, true);
+    assert.strictEqual(result.written, true);
+  });
+
+  it('does not claim an overwrite when nothing was replaced', () => {
+    assert.strictEqual(setKey({}, 'greeting.formal', 'Good day').overwritten, false);
+    assert.strictEqual(setKey({ greeting: {} }, 'greeting.formal', 'x').overwritten, false);
+  });
+
+  it('still replaces the leaf when overwrite is allowed', () => {
+    const tree: TranslationTree = { greeting: 'Witaj' };
+    assert.strictEqual(setKey(tree, 'greeting.formal', 'Dzień dobry').written, true);
+    assert.deepStrictEqual(tree, { greeting: { formal: 'Dzień dobry' } });
+  });
+});
+
+describe('generateKey punctuation', () => {
+  it('strips a sentence-ending period instead of emitting a trailing dot', () => {
+    assert.strictEqual(generateKey('home', 'Save your changes.'), 'home.save_your_changes');
+  });
+
+  it('produces a key that setKey stores as a leaf and isKeyValid accepts', () => {
+    const key = generateKey('home', 'Save your changes.');
+    assert.strictEqual(isKeyValid(key, 'key'), true);
+    const tree: TranslationTree = {};
+    setKey(tree, key, 'Save your changes.');
+    assert.deepStrictEqual(tree, { home: { save_your_changes: 'Save your changes.' } });
+  });
+
+  it('collapses inner periods rather than nesting on them', () => {
+    assert.strictEqual(generateKey('app', 'Version 1.2 released.'), 'app.version_1_2_released');
+  });
+
+  it('keeps treating other sentence punctuation the same way', () => {
+    assert.strictEqual(generateKey('home', 'Saved!'), 'home.saved');
+    assert.strictEqual(generateKey('home', 'Are you sure?'), 'home.are_you_sure');
+  });
+});

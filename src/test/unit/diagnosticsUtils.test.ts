@@ -103,3 +103,40 @@ describe('planReferenceRename', () => {
     assert.deepStrictEqual(planReferenceRename(`{{ 'a.b' | translate }}`, 'html', 'x.y', 'z'), []);
   });
 });
+
+describe('findTranslateKeys (non-ASCII keys)', () => {
+  // generateKey slugifies the selected text without stripping letters, so
+  // non-ASCII UI copy produces non-ASCII keys. A key the scanner cannot read
+  // back is treated as unused and offered for deletion, pre-selected — so this
+  // charset has to cover everything generateKey can emit.
+  it('finds a key with non-ASCII letters in a template', () => {
+    const refs = findTranslateKeys(`<button>{{ 'home.wyślij_zgłoszenie' | translate }}</button>`, 'html');
+    assert.deepStrictEqual(refs.map((ref) => ref.key), ['home.wyślij_zgłoszenie']);
+  });
+
+  it('finds a key with non-ASCII letters in a TranslateService call', () => {
+    const refs = findTranslateKeys(`this.translate.instant('błąd.zapisu');`, 'typescript');
+    assert.deepStrictEqual(refs.map((ref) => ref.key), ['błąd.zapisu']);
+  });
+
+  it('reports an offset and length that select exactly the key', () => {
+    const text = `<p>{{ 'menü.öffnen' | translate }}</p>`;
+    const [ref] = findTranslateKeys(text, 'html');
+    assert.strictEqual(text.slice(ref.index, ref.index + ref.length), 'menü.öffnen');
+  });
+
+  it('handles scripts beyond Latin', () => {
+    assert.deepStrictEqual(
+      findTranslateKeys(`<p>{{ 'меню.открыть' | translate }}</p>`, 'html').map((ref) => ref.key),
+      ['меню.открыть']
+    );
+    assert.deepStrictEqual(
+      findTranslateKeys(`<p>{{ '菜单.打开' | translate }}</p>`, 'html').map((ref) => ref.key),
+      ['菜单.打开']
+    );
+  });
+
+  it('still does not match across a space, so quoted prose is not a key', () => {
+    assert.deepStrictEqual(findTranslateKeys(`<p>{{ 'Wyślij zgłoszenie' | translate }}</p>`, 'html'), []);
+  });
+});

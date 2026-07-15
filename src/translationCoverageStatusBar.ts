@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { EXTENSION_IDENTIFIER, ExtensionCommands, MISSING_TRANSLATION_PLACEHOLDER } from './const';
+import { EXTENSION_IDENTIFIER, ExtensionCommands } from './const';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
 import { buildTranslationCoverage } from './utils/translationUtils';
@@ -58,7 +58,7 @@ export class TranslationCoverageStatusBar {
     }
     const languages = await FileSystemManager.getAllLanguageTranslations();
     const mainLanguage = ExtensionConfigManager.getConfigValue('language') ?? 'en';
-    const coverage = buildTranslationCoverage(languages, MISSING_TRANSLATION_PLACEHOLDER)
+    const coverage = buildTranslationCoverage(languages, ExtensionConfigManager.getPlaceholder())
       .filter((entry) => entry.language !== mainLanguage);
     if (!coverage.length) {
       TranslationCoverageStatusBar.item.hide();

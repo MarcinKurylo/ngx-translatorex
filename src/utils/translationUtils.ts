@@ -426,11 +426,18 @@ export function checkForParamsInSelection(selection: string): RegExpMatchArray[]
  */
 export function renameParams(selection: string, paramNames: string[]): string {
   const params = checkForParamsInSelection(selection);
-  params.forEach((param, id) => {
-    if (paramNames[id]) {
-      selection = selection.replace(param[0], ` {{ ${paramNames[id]} }} `);
+  // Rewrite by offset, right-to-left. `String.replace` with the placeholder's
+  // text would rewrite the *first* identical placeholder rather than the one at
+  // this position — inverting the names when a param repeats — and editing
+  // left-to-right would shift the offsets of the ones still to come.
+  for (let id = params.length - 1; id >= 0; id--) {
+    const name = paramNames[id];
+    if (!name) {
+      continue;
     }
-  });
+    const index = params[id].index!;
+    selection = `${selection.slice(0, index)} {{ ${name} }} ${selection.slice(index + params[id][0].length)}`;
+  }
   return selection;
 }
 

@@ -2,6 +2,45 @@
 
 All notable changes to the "ngx-translatorex" extension will be documented in this file.
 
+## [0.8.2]
+
+- Fixed three key-handling paths that silently destroyed translations:
+  - Keys containing non-ASCII letters (`home.wyślij_zgłoszenie`, produced by
+    extraction from any non-English UI copy) were invisible to the reference
+    scanner. **Clean unused i18n keys** therefore listed them as unused and
+    pre-selected them, so one confirmation deleted a live, referenced key from
+    every language file. The same gap disabled hover, go-to-definition, the
+    inline preview and the usage CodeLens for those keys.
+  - Adding a key nested under an existing one (`greeting.formal` where
+    `greeting` was already translated) replaced that translation with a
+    placeholder in the secondary languages. On the main language it did warn —
+    except in exactly the case that dropped a value, where it stayed silent.
+  - Text ending in a period (`"Save your changes."`) produced a key with a
+    trailing dot, stored as an unnamed empty segment and impossible to rename
+    afterwards.
+- Interpolation params are renamed by position again: with a repeated
+  placeholder (`Hi {{ name }}, bye {{ name }}`) the rename landed on the wrong
+  one, binding each param to the wrong expression.
+- The coverage status bar honours `ngx-translatorex.placeholder`. With a custom
+  placeholder it reported `pl 100%` while the translation report listed every one
+  of those keys as untranslated.
+- Agent tooling is consistent across the two surfaces:
+  - The in-editor tools and the MCP server now share one rule set for writing a
+    translation — they had drifted to three different answers, and the
+    single-key tool checked nothing at all, contrary to the param-safety
+    guarantee added in 0.6.0.
+  - `extractString` / `extractStrings` refuse a key that cannot be created
+    without discarding an existing translation, and say why, instead of
+    creating a conflict that later writes then act on.
+  - `listMissingTranslations` no longer asks an agent to translate a key that has
+    no main-language source.
+  - New `NGX_SYNC_LANGUAGES` for the MCP server, mirroring the extension's
+    `syncLanguages` setting.
+- The hard-coded string scan is linear again, not quadratic: a 20k-line template
+  went from ~409 ms to ~11 ms, and the cost no longer quadruples with file size.
+- The MCP server's `listUndefinedKeys` skips an unreadable file instead of
+  failing the whole call, and reports its real version to the client.
+
 ## [0.8.1]
 
 - Security: hardened the agent surfaces against untrusted input. An agent driving

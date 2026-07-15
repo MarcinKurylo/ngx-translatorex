@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation, planBulkExtraction } from '../../utils/hardcodedStringUtils';
+import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, normalizeInterpolation, planBulkExtraction } from '../../utils/hardcodedStringUtils';
 
 const texts = (html: string, options?: Parameters<typeof findHardcodedStrings>[1]) =>
   findHardcodedStrings(html, options).map((c) => c.text);
@@ -172,22 +172,22 @@ describe('findHardcodedStrings', () => {
   });
 });
 
-describe('locateHardcodedStrings', () => {
+describe('findHardcodedStrings', () => {
   it('tags each candidate with its one-based line number', () => {
     const html = '<div>\n  <h1>Title</h1>\n\n  <p>Body</p>\n</div>';
-    const located = locateHardcodedStrings(html);
+    const located = findHardcodedStrings(html);
     assert.deepStrictEqual(located.map((c) => [c.text, c.line]), [['Title', 2], ['Body', 4]]);
   });
 
   it('counts the line of a candidate inside a multi-line node from its start', () => {
     const html = '<a>x</a>\n<a>x</a>\n<p>Real text</p>';
-    const [located] = locateHardcodedStrings(html);
+    const [located] = findHardcodedStrings(html);
     assert.strictEqual(located.text, 'Real text');
     assert.strictEqual(located.line, 3);
   });
 
   it('returns an empty array when there are no findings', () => {
-    assert.deepStrictEqual(locateHardcodedStrings('<p>{{ x }}</p>'), []);
+    assert.deepStrictEqual(findHardcodedStrings('<p>{{ x }}</p>'), []);
   });
 });
 

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
 import { ExtensionCommands, EXTENSION_IDENTIFIER, HTML_SCAN_EXCLUDE, INLINE_IGNORE_MARKER } from './const';
-import { LocatedHardcodedString, findHardcodedStrings, locateHardcodedStrings, planBulkExtraction } from './utils/hardcodedStringUtils';
+import { HardcodedStringCandidate, findHardcodedStrings, planBulkExtraction } from './utils/hardcodedStringUtils';
 import { LanguageModelManager } from './utils/languageModelManager';
 import { buildTranslationPrompt, paramsPreserved, sanitizeTranslation } from './utils/translationLmUtils';
 import { NotificationManager } from './utils/notificationManager';
@@ -492,13 +492,13 @@ export class Commands {
     options: { minLength: number; ignore: string[] },
     progress: vscode.Progress<{ message?: string; increment?: number }>,
     token: vscode.CancellationToken
-  ): Promise<{ files: { path: string; findings: LocatedHardcodedString[] }[]; findingCount: number; scanned: number } | undefined> {
+  ): Promise<{ files: { path: string; findings: HardcodedStringCandidate[] }[]; findingCount: number; scanned: number } | undefined> {
     const uris = await vscode.workspace.findFiles('**/*.html', HTML_SCAN_EXCLUDE, undefined, token);
     if (token.isCancellationRequested) {
       return undefined;
     }
     const decoder = new TextDecoder();
-    const files: { path: string; findings: LocatedHardcodedString[] }[] = [];
+    const files: { path: string; findings: HardcodedStringCandidate[] }[] = [];
     let findingCount = 0;
     let next = 0;
     let done = 0;
@@ -506,7 +506,7 @@ export class Commands {
       while (next < uris.length && !token.isCancellationRequested) {
         const uri = uris[next++];
         try {
-          const findings = locateHardcodedStrings(decoder.decode(await vscode.workspace.fs.readFile(uri)), options);
+          const findings = findHardcodedStrings(decoder.decode(await vscode.workspace.fs.readFile(uri)), options);
           if (findings.length) {
             files.push({ path: vscode.workspace.asRelativePath(uri), findings });
             findingCount += findings.length;
@@ -671,7 +671,7 @@ export class Commands {
 
   /** Renders the workspace hard-coded-strings scan as a Markdown document. */
   private static renderHardcodedReport(
-    scan: { files: { path: string; findings: LocatedHardcodedString[] }[]; findingCount: number; scanned: number }
+    scan: { files: { path: string; findings: HardcodedStringCandidate[] }[]; findingCount: number; scanned: number }
   ): string {
     const lines: string[] = [
       '# Hard-coded strings report',

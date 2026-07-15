@@ -4,12 +4,14 @@ import {
   MissingDetail,
   MissingSummary,
   UntranslatedItem,
+  collectUntranslatedItems,
   findContainingCandidate,
   planFileExtractions,
   planSeed,
   resolveContainedPath,
   shapeMissingTranslations
 } from '../../utils/i18nToolUtils';
+import { TranslationTree } from '../../utils/translationUtils';
 import { applyExtractionToText } from '../../utils/hardcodedStringUtils';
 
 const items: UntranslatedItem[] = [
@@ -206,5 +208,63 @@ describe('resolveContainedPath', () => {
 
   it('rejects a path that escapes only after normalisation', () => {
     assert.strictEqual(resolveContainedPath(root, 'src/../../outside/x.html'), undefined);
+  });
+});
+
+describe('collectUntranslatedItems', () => {
+  const PLACEHOLDER = '[TODO]';
+  const languages: { language: string; tree: TranslationTree }[] = [
+    { language: 'en', tree: { home: { title: 'Home', subtitle: 'Welcome' } } },
+    { language: 'pl', tree: { home: { title: 'Dom', subtitle: PLACEHOLDER } } },
+    { language: 'de', tree: { home: { title: 'Zuhause' } } }
+  ];
+
+  it('reports keys that are missing or still placeholder, with their source', () => {
+    const items = collectUntranslatedItems(languages, 'en', PLACEHOLDER);
+    assert.deepStrictEqual(items, [
+      { language: 'pl', key: 'home.subtitle', source: 'Welcome' },
+      { language: 'de', key: 'home.subtitle', source: 'Welcome' }
+    ]);
+  });
+
+  it('never asks the agent to translate a key with no main-language source', () => {
+    // The drift this function exists to remove: the report-based collection
+    // diffed against the union of all languages, so a stale key surviving only
+    // in a secondary file came back with source: null.
+    const withLegacy: { language: string; tree: TranslationTree }[] = [
+      ...languages,
+      { language: 'fr', tree: { home: { title: 'Accueil', subtitle: 'Bienvenue' }, old: { banner: 'Vieux' } } }
+    ];
+    const items = collectUntranslatedItems(withLegacy, 'en', PLACEHOLDER);
+    assert.strictEqual(items.some((item) => item.key === 'old.banner'), false);
+    assert.strictEqual(items.every((item) => item.source !== null), true);
+  });
+
+  it('skips keys whose main-language value is itself the placeholder', () => {
+    const items = collectUntranslatedItems(
+      [
+        { language: 'en', tree: { a: PLACEHOLDER, b: 'Real' } },
+        { language: 'pl', tree: {} }
+      ],
+      'en',
+      PLACEHOLDER
+    );
+    assert.deepStrictEqual(items.map((item) => item.key), ['b']);
+  });
+
+  it('excludes the main language and honours a custom placeholder', () => {
+    const items = collectUntranslatedItems(
+      [
+        { language: 'en', tree: { a: 'Real' } },
+        { language: 'pl', tree: { a: '[UNTRANSLATED]' } }
+      ],
+      'en',
+      '[UNTRANSLATED]'
+    );
+    assert.deepStrictEqual(items, [{ language: 'pl', key: 'a', source: 'Real' }]);
+  });
+
+  it('returns nothing when there is no main language file', () => {
+    assert.deepStrictEqual(collectUntranslatedItems([{ language: 'pl', tree: { a: 'x' } }], 'en', PLACEHOLDER), []);
   });
 });

@@ -14,8 +14,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { TranslationTree, findUntranslatedKeys, flattenObject, isKeyValid, setKey, sortObject } from '../../src/utils/translationUtils';
-import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
-import { findContainingCandidate, planFileExtractions, planSeed, resolveContainedPath } from '../../src/utils/i18nToolUtils';
+import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
+import { collectUntranslatedItems, findContainingCandidate, planFileExtractions, planSeed, resolveContainedPath } from '../../src/utils/i18nToolUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
 import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
@@ -148,7 +148,7 @@ export const scan = (file?: string): { file: string; line: number; text: string;
     if (!fs.existsSync(abs)) {
       continue;
     }
-    for (const candidate of locateHardcodedStrings(fs.readFileSync(abs, 'utf8'), DETECTION)) {
+    for (const candidate of findHardcodedStrings(fs.readFileSync(abs, 'utf8'), DETECTION)) {
       findings.push({
         file: path.relative(PROJECT_DIR, abs),
         line: candidate.line,
@@ -282,15 +282,12 @@ export const extractStrings = (
 };
 
 /** Every key still needing translation across the secondary languages, as a flat list. */
-const collectUntranslated = (): UntranslatedItem[] => {
-  const mainFlat = flattenObject(readTree(MAIN_LANG));
-  return listLanguages()
-    .filter((language) => language !== MAIN_LANG)
-    .flatMap((language) =>
-      findUntranslatedKeys(mainFlat, flattenObject(readTree(language)), PLACEHOLDER)
-        .map((key) => ({ language, key, source: mainFlat[key] ?? null }))
-    );
-};
+const collectUntranslated = (): UntranslatedItem[] =>
+  collectUntranslatedItems(
+    listLanguages().map((language) => ({ language, tree: readTree(language) })),
+    MAIN_LANG,
+    PLACEHOLDER
+  );
 
 /**
  * Keys missing or still placeholder, with their main-language source. Defaults
@@ -382,7 +379,12 @@ export const listUndefinedKeys = (): { file: string; line: number; key: string }
   const mainFlat = flattenObject(readTree(MAIN_LANG));
   const undefinedKeys: { file: string; line: number; key: string }[] = [];
   for (const abs of listSourceFiles()) {
-    const text = fs.readFileSync(abs, 'utf8');
+    let text: string;
+    try {
+      text = fs.readFileSync(abs, 'utf8');
+    } catch {
+      continue; // Unreadable file — skip it, as every other scan path does.
+    }
     const languageId = abs.endsWith('.ts') ? 'typescript' : 'html';
     for (const ref of findTranslateKeys(text, languageId)) {
       if (mainFlat[ref.key] === undefined) {

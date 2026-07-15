@@ -3,10 +3,9 @@ import { TextDecoder, TextEncoder } from 'util';
 import { EXTENSION_IDENTIFIER, HTML_SCAN_EXCLUDE } from './const';
 import { ExtensionConfigManager } from './utils/extensionConfigManager';
 import { FileSystemManager } from './utils/fileSystemManager';
-import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation, PlannedExtraction } from './utils/hardcodedStringUtils';
+import { PlannedExtraction, applyExtractionToText, findHardcodedStrings, interpolationSnippet, normalizeInterpolation } from './utils/hardcodedStringUtils';
 import { findTranslateKeys } from './utils/diagnosticsUtils';
-import { buildTranslationReport, flattenObject } from './utils/translationUtils';
-import { ListMissingOptions, UntranslatedItem, findContainingCandidate, planFileExtractions, shapeMissingTranslations } from './utils/i18nToolUtils';
+import { ListMissingOptions, collectUntranslatedItems, findContainingCandidate, planFileExtractions, shapeMissingTranslations } from './utils/i18nToolUtils';
 
 /** Tool names, namespaced under the extension id (must match package.json contributions). */
 const TOOL = {
@@ -208,18 +207,11 @@ export class LanguageModelTools {
       invoke: async (options) => {
         const languages = await FileSystemManager.getAllLanguageTranslations();
         const mainLanguage = ExtensionConfigManager.getConfigValue('language') ?? 'en';
-        const mainEntry = languages.find((entry) => entry.language === mainLanguage);
-        const mainFlat = mainEntry ? flattenObject(mainEntry.tree) : {};
-        const placeholder = ExtensionConfigManager.getPlaceholder();
-        const items: UntranslatedItem[] = buildTranslationReport(languages, placeholder)
-          .filter((report) => report.language !== mainLanguage)
-          .flatMap((report) =>
-            [...report.missing, ...report.untranslated].map((key) => ({
-              language: report.language,
-              key,
-              source: mainFlat[key] ?? null
-            }))
-          );
+        const items = collectUntranslatedItems(
+          languages,
+          mainLanguage,
+          ExtensionConfigManager.getPlaceholder()
+        );
         return result({ mainLanguage, ...shapeMissingTranslations(items, options.input) });
       }
     };
@@ -332,7 +324,7 @@ export class LanguageModelTools {
     const options = detectionOptions();
     const findings: { file: string; line: number; text: string; category: string; confidence: string }[] = [];
     const collect = (uri: vscode.Uri, text: string) => {
-      for (const candidate of locateHardcodedStrings(text, options)) {
+      for (const candidate of findHardcodedStrings(text, options)) {
         findings.push({
           file: vscode.workspace.asRelativePath(uri),
           line: candidate.line,

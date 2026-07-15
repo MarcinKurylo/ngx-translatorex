@@ -14,7 +14,7 @@ import {
   interpolationSnippet,
   normalizeInterpolation
 } from './hardcodedStringUtils';
-import { findUntranslatedKeys } from './translationUtils';
+import { TranslationTree, findUntranslatedKeys, flattenObject } from './translationUtils';
 
 /**
  * Resolves a caller-supplied path against a root and returns it only when it
@@ -192,10 +192,40 @@ const underPrefix = (key: string, prefix: string): boolean =>
   key === prefix || key.startsWith(`${prefix}.`);
 
 /**
+ * Collects every key a secondary language still needs translated, with its
+ * main-language source.
+ *
+ * This lives here, rather than in each surface, because "which keys need
+ * translating" is the answer the agent acts on — and the two surfaces had drifted
+ * on it: one asked `buildTranslationReport` (which diffs against the union of
+ * *all* languages' keys, so a key only a stale secondary file still has came back
+ * with `source: null`, asking the agent to translate text that does not exist),
+ * the other asked `findUntranslatedKeys` (main-language keys only). Same project,
+ * different counts, depending on which surface the agent happened to call.
+ */
+export function collectUntranslatedItems(
+  languages: { language: string; tree: TranslationTree }[],
+  mainLanguage: string,
+  placeholder: string
+): UntranslatedItem[] {
+  const main = languages.find((entry) => entry.language === mainLanguage);
+  const mainFlat = main ? flattenObject(main.tree) : {};
+  return languages
+    .filter((entry) => entry.language !== mainLanguage)
+    .flatMap((entry) =>
+      findUntranslatedKeys(mainFlat, flattenObject(entry.tree), placeholder).map((key) => ({
+        language: entry.language,
+        key,
+        source: mainFlat[key] ?? null
+      }))
+    );
+}
+
+/**
  * Shapes a flat list of untranslated keys into either a compact summary (counts
  * + per-prefix histogram, the default — safe on large projects) or a paginated,
- * filtered detail list. Both surfaces build the flat list their own way, then
- * defer the token-shaping here so behaviour stays identical.
+ * filtered detail list. Both surfaces collect via {@link collectUntranslatedItems}
+ * and shape here, so behaviour stays identical.
  */
 export function shapeMissingTranslations(
   items: UntranslatedItem[],

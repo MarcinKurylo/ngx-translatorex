@@ -44,9 +44,10 @@ export function isKeyValid(key: string, mode: Mode): boolean {
  * Inserts a value into a nested tree under a dotted key, creating any missing
  * intermediate subtrees. Mutates `tree` in place.
  *
- * When `options.overwrite` is `false`, an existing value at the key is left
- * untouched (used for secondary language files, so real translations are never
- * replaced with a placeholder).
+ * When `options.overwrite` is `false`, an existing value is left untouched (used
+ * for secondary language files, so real translations are never replaced with a
+ * placeholder) — including a leaf the new key would have to nest *under*, which
+ * would otherwise be destroyed on the way down.
  *
  * @returns `overwritten` — whether an existing value was replaced; `written` —
  * whether the tree was actually modified.
@@ -73,9 +74,22 @@ export function setKey(
     return { overwritten, written: true };
   }
   const child = tree[head];
+  // Nesting under an existing leaf ("greeting": "Witaj" + key "greeting.formal")
+  // means replacing that leaf with a subtree — JSON cannot hold both. Under
+  // `overwrite: false` that is exactly the loss the flag exists to prevent, so
+  // refuse rather than silently drop a real translation on the way down.
+  if (!overwrite && typeof child === 'string') {
+    return { overwritten: false, written: false };
+  }
+  // When overwriting is allowed the leaf does give way to the subtree — but its
+  // value is still discarded, and the recursion below only ever sees the fresh
+  // subtree. Report it here, or the caller's "key overwritten" warning never
+  // fires for the one case that silently drops a translation.
+  const replacedLeaf = typeof child === 'string';
   const subtree: TranslationTree = isSubtree(child) ? child : {};
   tree[head] = subtree;
-  return setKey(subtree, rest.join('.'), value, options);
+  const result = setKey(subtree, rest.join('.'), value, options);
+  return { ...result, overwritten: result.overwritten || replacedLeaf };
 }
 
 /**
@@ -426,6 +440,11 @@ export function renameParams(selection: string, paramNames: string[]): string {
  * underscores. When the scope already ends with a dot it is returned as-is
  * (without the trailing dot); an empty scope yields the bare slug (top-level
  * key, no leading dot).
+ *
+ * The dot is stripped along with the other punctuation, and has to be: it is the
+ * key separator, so a sentence-ending period ("Save your changes.") would
+ * otherwise produce a trailing dot, which `setKey` turns into an empty-named
+ * segment and `isKeyValid` then refuses to rename.
  */
 export function generateKey(scope: string, value: string): string {
   if (scope.endsWith('.')) {
@@ -433,7 +452,7 @@ export function generateKey(scope: string, value: string): string {
   }
   const slug = value
     .toLocaleLowerCase()
-    .replace(/[`~!@#$%^&*()_|+\-=?;:{}'",<>\{\}\[\]\\\/]/gi, ' ')
+    .replace(/[`~!@#$%^&*()_|+\-=?;:{}'",.<>\{\}\[\]\\\/]/gi, ' ')
     .trim()
     .split(/\s+/)
     .join('_');

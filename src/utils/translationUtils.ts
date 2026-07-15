@@ -93,6 +93,32 @@ export function setKey(
 }
 
 /**
+ * Whether writing a string at this key would destroy translations that already
+ * exist — because JSON cannot hold both a text and a namespace at one name:
+ *
+ *  - an ancestor is a leaf (`greeting: "Witaj"` + key `greeting.formal`), so the
+ *    leaf would be replaced by a subtree on the way down; or
+ *  - the key itself holds a non-empty subtree (`greeting.formal` exists + key
+ *    `greeting`), so the whole subtree would be replaced by the string.
+ *
+ * Reported rather than prevented in {@link setKey}, because the interactive path
+ * lets a human restructure deliberately (and warns), while the agent paths — which
+ * cannot see a warning and did not know the name was taken — refuse.
+ */
+export function hasWriteConflict(tree: TranslationTree, key: string): boolean {
+  const segments = key.split('.');
+  let node: string | TranslationTree | undefined = tree;
+  for (let i = 0; i < segments.length - 1; i++) {
+    node = isSubtree(node) ? node[segments[i]] : undefined;
+    if (typeof node === 'string') {
+      return true;
+    }
+  }
+  const existing = getNode(tree, key);
+  return isSubtree(existing) && Object.keys(existing).length > 0;
+}
+
+/**
  * Returns the node stored under a dotted key — either a string leaf or a whole
  * subtree — or `undefined` when the key does not exist.
  */

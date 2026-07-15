@@ -2,7 +2,7 @@
   "name": "ngx-translatorex",
 	"displayName": "ngx-translatorex — Angular i18n & ngx-translate toolkit",
 	"description": "Angular ngx-translate i18n toolkit: extract hard-coded strings into keys, multi-language sync, missing-key diagnostics, go-to-definition, rename/delete — plus AI auto-translation and agent/MCP tools (Copilot, Claude).",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"publisher": "marcinex",
 	"license": "MIT",
 	"icon": "images/icon.png",

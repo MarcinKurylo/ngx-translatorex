@@ -1,6 +1,6 @@
 {
   "name": "ngx-translatorex-mcp",
-  "version": "0.1.0-preview.1",
+  "version": "0.1.0-preview.2",
   "description": "MCP server to localize Angular / ngx-translate apps with an AI agent (Claude, Copilot): scan hard-coded strings, extract i18n keys, and translate — from any MCP client.",
   "license": "MIT",
   "author": "Marcin Kuryło",

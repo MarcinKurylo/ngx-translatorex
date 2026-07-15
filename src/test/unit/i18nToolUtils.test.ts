@@ -6,6 +6,7 @@ import {
   UntranslatedItem,
   collectUntranslatedItems,
   findContainingCandidate,
+  isTemplatePath,
   planFileExtractions,
   planSeed,
   rejectKeyCreation,
@@ -354,5 +355,23 @@ describe('planSeed conflicts', () => {
   it('still replaces a placeholder sitting at the key itself when copying the source', () => {
     const plan = planSeed({ 'a.b': 'Source' }, { a: { b: '[TODO]' } }, '[TODO]', true);
     assert.deepStrictEqual(plan, [{ key: 'a.b', value: 'Source' }]);
+  });
+});
+
+describe('isTemplatePath', () => {
+  // Both surfaces declare a "project-relative .html path"; this is what makes
+  // them enforce the same thing rather than each promising it separately.
+  it('accepts a template path', () => {
+    assert.strictEqual(isTemplatePath('src/app/home.component.html'), true);
+  });
+
+  it('still accepts a glob, which the extension resolves through findFiles', () => {
+    assert.strictEqual(isTemplatePath('**/home.component.html'), true);
+  });
+
+  it('rejects anything that is not a template', () => {
+    for (const file of ['src/app/home.component.ts', 'package.json', '../../etc/hosts', 'notes.html.bak']) {
+      assert.strictEqual(isTemplatePath(file), false, file);
+    }
   });
 });

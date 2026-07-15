@@ -6,16 +6,17 @@
  *
  * Configuration comes from environment variables so an MCP client can point the
  * server at a project:
- *  - `NGX_PROJECT_DIR`  project root scanned for templates (default: cwd)
- *  - `NGX_I18N_DIR`     folder holding `<lang>.json` files (default: `<root>/src/assets/i18n`)
- *  - `NGX_MAIN_LANG`    main language code (default: `en`)
- *  - `NGX_PLACEHOLDER`  untranslated-key placeholder
+ *  - `NGX_PROJECT_DIR`     project root scanned for templates (default: cwd)
+ *  - `NGX_I18N_DIR`        folder holding `<lang>.json` files (default: `<root>/src/assets/i18n`)
+ *  - `NGX_MAIN_LANG`       main language code (default: `en`)
+ *  - `NGX_PLACEHOLDER`     untranslated-key placeholder
+ *  - `NGX_SYNC_LANGUAGES`  `false` to write only the main language (default: sync on)
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { TranslationTree, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
-import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, collectUntranslatedItems, findContainingCandidate, planFileExtractions, planSeed, rejectKeyCreation, rejectTranslationWrite, rejectionMessage, resolveContainedPath, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
+import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, collectUntranslatedItems, findContainingCandidate, isTemplatePath, planFileExtractions, planSeed, rejectKeyCreation, rejectTranslationWrite, rejectionMessage, resolveContainedPath, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
 
 const PROJECT_DIR = process.env.NGX_PROJECT_DIR || process.cwd();
@@ -23,6 +24,8 @@ const I18N_DIR = process.env.NGX_I18N_DIR || path.join(PROJECT_DIR, 'src/assets/
 const MAIN_LANG = process.env.NGX_MAIN_LANG || 'en';
 const PLACEHOLDER = process.env.NGX_PLACEHOLDER || '[TODO] translation not implemented';
 const SORT_ON_SAVE = process.env.NGX_SORT_ON_SAVE === 'true';
+/** Mirrors the extension's `syncLanguages` setting, including its default of on. */
+const SYNC_LANGUAGES = process.env.NGX_SYNC_LANGUAGES !== 'false';
 
 const EXCLUDED_DIRS = new Set(['node_modules', 'dist', '.angular', 'out', 'coverage', '.git']);
 
@@ -60,7 +63,7 @@ const DETECTION = {
  */
 const contain = (file: string): string => {
   const abs = resolveContainedPath(PROJECT_DIR, file);
-  if (!abs || !abs.endsWith('.html')) {
+  if (!abs || !isTemplatePath(abs)) {
     throw new Error(`Refused "${file}": expected a project-relative .html path inside the project root.`);
   }
   if (!fs.existsSync(abs)) {
@@ -164,7 +167,7 @@ export const scan = (file?: string): { file: string; line: number; text: string;
  * `translate` pipe and adds the key across all language files (real value in the
  * main language, placeholder elsewhere).
  */
-export const extract = (file: string, text: string, key: string): { key: string; extracted: number; params?: string[]; message?: string; partial?: boolean; containingText?: string } => {
+export const extract = (file: string, text: string, key: string): { key: string; extracted: number; keyCreated?: boolean; params?: string[]; message?: string; partial?: boolean; containingText?: string } => {
   const abs = contain(file);
   if (!fs.existsSync(abs)) {
     return { key, extracted: 0, message: `File not found: ${file}` };
@@ -189,29 +192,31 @@ export const extract = (file: string, text: string, key: string): { key: string;
     return { key, extracted: 0, message: `No hard-coded occurrence of that text found in ${file}` };
   }
   fs.writeFileSync(abs, applyExtractionToText(source, plan));
-  for (const language of listLanguages()) {
-    const tree = readTree(language);
-    // `overwrite: false` rather than a key-exists check: only the flag also
-    // refuses to nest under an existing leaf, which would replace a real
-    // translation with a placeholder.
-    const { written } =
-      language === MAIN_LANG
-        ? setKey(tree, key, value)
-        : setKey(tree, key, PLACEHOLDER, { overwrite: false });
-    if (written) {
-      writeTree(language, tree);
-    }
-  }
-  return { key, extracted: plan.length, params: params.map((param) => param.name) };
+  const keyCreated = addKeysToLanguages([{ key, value }]);
+  return { key, extracted: plan.length, keyCreated, params: params.map((param) => param.name) };
 };
 
-/** Adds keys to the language files: real value in the main language, placeholder elsewhere. One read/write per language. */
-const addKeysToLanguages = (entries: { key: string; value: string }[]): void => {
+/**
+ * Adds keys to the language files: the real value in the main language, a
+ * placeholder in the rest — unless `NGX_SYNC_LANGUAGES=false`, which restricts
+ * the write to the main language, as the extension's `syncLanguages` setting
+ * does. One read/write per language.
+ *
+ * @returns whether any file was actually written.
+ */
+const addKeysToLanguages = (entries: { key: string; value: string }[]): boolean => {
   const unique = new Map(entries.map((entry) => [entry.key, entry.value]));
+  let saved = false;
   for (const language of listLanguages()) {
+    if (language !== MAIN_LANG && !SYNC_LANGUAGES) {
+      continue;
+    }
     const tree = readTree(language);
     let changed = false;
     for (const [key, value] of unique) {
+      // `overwrite: false` rather than a key-exists check: only the flag also
+      // refuses to nest under an existing leaf, which would replace a real
+      // translation with a placeholder.
       const { written } =
         language === MAIN_LANG
           ? setKey(tree, key, value)
@@ -219,9 +224,11 @@ const addKeysToLanguages = (entries: { key: string; value: string }[]): void => 
       changed = changed || written;
     }
     if (changed) {
+      saved = true;
       writeTree(language, tree);
     }
   }
+  return saved;
 };
 
 /**

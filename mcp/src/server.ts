@@ -14,7 +14,27 @@ import {
   ListPromptsRequestSchema,
   ListToolsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as i18n from './i18n';
+
+/**
+ * The version this server reports to its client, read from the package rather
+ * than repeated here — a hardcoded copy silently drifts, and then the one
+ * question a stuck user asks ("which version am I actually running?") gets the
+ * wrong answer.
+ *
+ * Resolved from `__dirname` because the same relative depth holds in both
+ * layouts: `dist/mcp/src/server.js` sits three levels under the package root
+ * whether it is this repo's `mcp/` or an installed `node_modules` copy.
+ */
+const version = ((): string => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, '../../../package.json'), 'utf8')).version;
+  } catch {
+    return '0.0.0-unknown'; // Never fail to start over a version string.
+  }
+})();
 
 const tools = [
   {
@@ -134,7 +154,7 @@ const prompts = [
   }
 ];
 
-const server = new Server({ name: 'ngx-translatorex', version: '0.1.0' }, { capabilities: { tools: {}, prompts: {} } });
+const server = new Server({ name: 'ngx-translatorex', version }, { capabilities: { tools: {}, prompts: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
 

@@ -13,7 +13,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { TranslationTree, findUntranslatedKeys, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
+import { TranslationTree, findUntranslatedKeys, flattenObject, isKeyValid, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
 import { findContainingCandidate, planFileExtractions, planSeed, resolveContainedPath } from '../../src/utils/i18nToolUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
@@ -320,6 +320,12 @@ export const setTranslations = (
   let skipped = 0;
   for (const item of items) {
     if (!known.has(item.language)) {
+      continue;
+    }
+    // The agent names its own keys; run them through the same validation the
+    // interactive path uses instead of trusting them into the tree.
+    if (!isKeyValid(item.key, 'key')) {
+      skipped++;
       continue;
     }
     const source = mainFlat[item.key];

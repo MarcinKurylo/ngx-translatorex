@@ -394,3 +394,63 @@ describe('isKeyValid', () => {
     assert.strictEqual(isKeyValid('a..b', 'scope'), false);
   });
 });
+
+describe('prototype-chain key safety', () => {
+  // Agent tools name their own keys, so a key reaching the tree is untrusted
+  // input. Walking into `__proto__` would assign onto every object in the
+  // process (the extension host is shared with other extensions).
+  afterEach(() => {
+    delete (Object.prototype as any).polluted;
+  });
+
+  it('does not pollute Object.prototype through a __proto__ key', () => {
+    const tree: TranslationTree = JSON.parse('{"a":{"b":"x"}}');
+    setKey(tree, '__proto__.polluted', 'POLLUTED');
+    assert.strictEqual(({} as any).polluted, undefined);
+    assert.deepStrictEqual(tree, { a: { b: 'x' } });
+  });
+
+  it('reports a forbidden key as not written', () => {
+    assert.deepStrictEqual(setKey({}, 'constructor.prototype.polluted', 'x'), {
+      overwritten: false,
+      written: false
+    });
+  });
+
+  it('refuses every prototype-addressing segment, at any depth', () => {
+    for (const key of ['__proto__.polluted', 'a.__proto__.polluted', 'constructor.polluted', 'a.prototype.polluted']) {
+      const tree: TranslationTree = {};
+      setKey(tree, key, 'POLLUTED');
+      assert.strictEqual(({} as any).polluted, undefined, `leaked via ${key}`);
+      assert.deepStrictEqual(tree, {}, `wrote a tree for ${key}`);
+    }
+  });
+
+  it('does not pollute through setNode, which rename routes writes through', () => {
+    setNode({}, '__proto__.polluted', 'POLLUTED');
+    assert.strictEqual(({} as any).polluted, undefined);
+  });
+
+  it('does not resolve a prototype key to a node', () => {
+    assert.strictEqual(getNode({ a: 'x' }, '__proto__'), undefined);
+    assert.strictEqual(getNode({ a: 'x' }, 'constructor'), undefined);
+  });
+
+  it('does not report a prototype key as deleted', () => {
+    assert.strictEqual(deleteKey({ a: 'x' }, '__proto__'), false);
+  });
+
+  it('rejects a prototype key in isKeyValid, in both modes', () => {
+    assert.strictEqual(isKeyValid('__proto__.foo', 'key'), false);
+    assert.strictEqual(isKeyValid('a.constructor', 'scope'), false);
+    assert.strictEqual(isKeyValid('a.prototype.b', 'key'), false);
+  });
+
+  it('still allows keys that merely contain a forbidden word', () => {
+    assert.strictEqual(isKeyValid('page.constructors', 'key'), true);
+    assert.strictEqual(isKeyValid('my__proto__key', 'key'), true);
+    const tree: TranslationTree = {};
+    setKey(tree, 'page.constructors', 'Builders');
+    assert.deepStrictEqual(tree, { page: { constructors: 'Builders' } });
+  });
+});

@@ -10,6 +10,7 @@ import {
   flattenObject,
   generateKey,
   getNode,
+  hasWriteConflict,
   isKeyValid,
   listKeyOffsets,
   renameKey,
@@ -543,5 +544,33 @@ describe('generateKey punctuation', () => {
   it('keeps treating other sentence punctuation the same way', () => {
     assert.strictEqual(generateKey('home', 'Saved!'), 'home.saved');
     assert.strictEqual(generateKey('home', 'Are you sure?'), 'home.are_you_sure');
+  });
+});
+
+describe('hasWriteConflict', () => {
+  it('detects an ancestor that already holds text', () => {
+    assert.strictEqual(hasWriteConflict({ greeting: 'Witaj' }, 'greeting.formal'), true);
+    assert.strictEqual(hasWriteConflict({ home: { greeting: 'Witaj' } }, 'home.greeting.formal'), true);
+  });
+
+  it('detects a key that is already a namespace', () => {
+    assert.strictEqual(hasWriteConflict({ greeting: { formal: 'Dzień dobry' } }, 'greeting'), true);
+  });
+
+  it('allows a key nesting under an existing subtree', () => {
+    assert.strictEqual(hasWriteConflict({ home: { casual: 'Cześć' } }, 'home.formal'), false);
+  });
+
+  it('allows a plain overwrite of a leaf at the key itself', () => {
+    assert.strictEqual(hasWriteConflict({ greeting: 'Witaj' }, 'greeting'), false);
+  });
+
+  it('allows a brand new key, at any depth', () => {
+    assert.strictEqual(hasWriteConflict({}, 'a.b.c'), false);
+    assert.strictEqual(hasWriteConflict({ other: 'x' }, 'a.b.c'), false);
+  });
+
+  it('does not treat an empty subtree as a conflict', () => {
+    assert.strictEqual(hasWriteConflict({ greeting: {} }, 'greeting'), false);
   });
 });

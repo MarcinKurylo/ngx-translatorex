@@ -13,12 +13,10 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { TranslationTree, findUntranslatedKeys, flattenObject, isKeyValid, setKey, sortObject } from '../../src/utils/translationUtils';
+import { TranslationTree, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
-import { collectUntranslatedItems, findContainingCandidate, planFileExtractions, planSeed, resolveContainedPath } from '../../src/utils/i18nToolUtils';
-import { paramsPreserved } from '../../src/utils/translationLmUtils';
+import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, collectUntranslatedItems, findContainingCandidate, planFileExtractions, planSeed, rejectKeyCreation, rejectTranslationWrite, rejectionMessage, resolveContainedPath, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
-import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
 
 const PROJECT_DIR = process.env.NGX_PROJECT_DIR || process.cwd();
 const I18N_DIR = process.env.NGX_I18N_DIR || path.join(PROJECT_DIR, 'src/assets/i18n');
@@ -171,6 +169,12 @@ export const extract = (file: string, text: string, key: string): { key: string;
   if (!fs.existsSync(abs)) {
     return { key, extracted: 0, message: `File not found: ${file}` };
   }
+  // Before the template is touched: a key that cannot be created without
+  // discarding a translation is refused, not written and then reported.
+  const rejection = rejectKeyCreation(key, readTree(MAIN_LANG));
+  if (rejection) {
+    return { key, extracted: 0, message: rejectionMessage(rejection, key) };
+  }
   const source = fs.readFileSync(abs, 'utf8');
   const { value, params } = normalizeInterpolation(text);
   const snippet = interpolationSnippet(key, params);
@@ -187,14 +191,16 @@ export const extract = (file: string, text: string, key: string): { key: string;
   fs.writeFileSync(abs, applyExtractionToText(source, plan));
   for (const language of listLanguages()) {
     const tree = readTree(language);
-    if (language === MAIN_LANG) {
-      setKey(tree, key, value);
-    } else if (flattenObject(tree)[key] === undefined) {
-      setKey(tree, key, PLACEHOLDER);
-    } else {
-      continue;
+    // `overwrite: false` rather than a key-exists check: only the flag also
+    // refuses to nest under an existing leaf, which would replace a real
+    // translation with a placeholder.
+    const { written } =
+      language === MAIN_LANG
+        ? setKey(tree, key, value)
+        : setKey(tree, key, PLACEHOLDER, { overwrite: false });
+    if (written) {
+      writeTree(language, tree);
     }
-    writeTree(language, tree);
   }
   return { key, extracted: plan.length, params: params.map((param) => param.name) };
 };
@@ -206,13 +212,11 @@ const addKeysToLanguages = (entries: { key: string; value: string }[]): void => 
     const tree = readTree(language);
     let changed = false;
     for (const [key, value] of unique) {
-      if (language === MAIN_LANG) {
-        setKey(tree, key, value);
-        changed = true;
-      } else if (flattenObject(tree)[key] === undefined) {
-        setKey(tree, key, PLACEHOLDER);
-        changed = true;
-      }
+      const { written } =
+        language === MAIN_LANG
+          ? setKey(tree, key, value)
+          : setKey(tree, key, PLACEHOLDER, { overwrite: false });
+      changed = changed || written;
     }
     if (changed) {
       writeTree(language, tree);
@@ -231,8 +235,15 @@ export const extractStrings = (
   items: { text: string; key: string; files?: string[] }[]
 ): { results: { key: string; text: string; extracted: number; files: string[]; params?: string[]; message?: string }[] } => {
   const templates = listTemplates();
+  // Refused items are settled up front, against the main language, so a bad key
+  // in the batch costs nothing and the templates are never half-rewritten.
+  const mainTree = readTree(MAIN_LANG);
+  const rejections = items.map((item) => rejectKeyCreation(item.key, mainTree));
   const perFile = new Map<string, { text: string; key: string; item: number }[]>();
   items.forEach((item, index) => {
+    if (rejections[index]) {
+      return;
+    }
     const files = item.files?.length
       ? item.files.map((file) => contain(file)).filter((abs) => fs.existsSync(abs))
       : templates;
@@ -269,13 +280,19 @@ export const extractStrings = (
     results: items.map((item, index) => {
       const extracted = accumulated[index].extracted;
       const params = normalizeInterpolation(item.text).params.map((param) => param.name);
+      const rejection = rejections[index];
+      const message = rejection
+        ? rejectionMessage(rejection, item.key)
+        : extracted === 0
+          ? 'No hard-coded occurrence of that exact text found'
+          : undefined;
       return {
         key: item.key,
         text: item.text,
         extracted,
         files: [...accumulated[index].files],
         ...(params.length ? { params } : {}),
-        ...(extracted === 0 ? { message: `No hard-coded occurrence of that exact text found` } : {})
+        ...(message ? { message } : {})
       };
     })
   };
@@ -319,21 +336,16 @@ export const setTranslations = (
     if (!known.has(item.language)) {
       continue;
     }
-    // The agent names its own keys; run them through the same validation the
-    // interactive path uses instead of trusting them into the tree.
-    if (!isKeyValid(item.key, 'key')) {
-      skipped++;
-      continue;
-    }
-    const source = mainFlat[item.key];
-    if (typeof source === 'string' && !paramsPreserved(source, item.value)) {
-      skipped++;
-      continue;
-    }
     if (!byLanguage.has(item.language)) {
       byLanguage.set(item.language, { language: item.language, tree: readTree(item.language) });
     }
-    setKey(byLanguage.get(item.language)!.tree, item.key, item.value);
+    const { tree } = byLanguage.get(item.language)!;
+    // Checked against the live tree, so earlier writes in this same batch count.
+    if (rejectTranslationWrite(item, mainFlat, tree)) {
+      skipped++;
+      continue;
+    }
+    setKey(tree, item.key, item.value);
     written++;
   }
   if (options.dryRun) {
@@ -361,7 +373,7 @@ export const seedMissing = (
   const perLanguage: { language: string; seeded: number }[] = [];
   for (const language of targets) {
     const tree = readTree(language);
-    const plan = planSeed(mainFlat, flattenObject(tree), PLACEHOLDER, options.copySource ?? false);
+    const plan = planSeed(mainFlat, tree, PLACEHOLDER, options.copySource ?? false);
     for (const entry of plan) {
       setKey(tree, entry.key, entry.value);
     }

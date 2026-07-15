@@ -8,6 +8,9 @@ import {
   findContainingCandidate,
   planFileExtractions,
   planSeed,
+  rejectKeyCreation,
+  rejectTranslationWrite,
+  rejectionMessage,
   resolveContainedPath,
   shapeMissingTranslations
 } from '../../utils/i18nToolUtils';
@@ -266,5 +269,90 @@ describe('collectUntranslatedItems', () => {
 
   it('returns nothing when there is no main language file', () => {
     assert.deepStrictEqual(collectUntranslatedItems([{ language: 'pl', tree: { a: 'x' } }], 'en', PLACEHOLDER), []);
+  });
+});
+
+describe('rejectTranslationWrite', () => {
+  // The one rule set both agent surfaces apply. Before it existed they had drifted
+  // to three different answers for the same request.
+  const mainFlat = { 'home.greeting': 'Hello', 'home.hi': 'Hi {{ name }}', 'home.plain': 'Plain' };
+
+  it('allows an ordinary translation', () => {
+    assert.strictEqual(
+      rejectTranslationWrite({ key: 'home.plain', value: 'Zwykły' }, mainFlat, { home: { plain: '[TODO]' } }),
+      undefined
+    );
+  });
+
+  it('rejects a key addressing the prototype chain', () => {
+    assert.strictEqual(rejectTranslationWrite({ key: '__proto__.pwn', value: 'x' }, mainFlat, {}), 'invalid-key');
+  });
+
+  it('rejects a value that drops a {{ param }} from the source', () => {
+    assert.strictEqual(rejectTranslationWrite({ key: 'home.hi', value: 'Cześć' }, mainFlat, {}), 'params-lost');
+  });
+
+  it('keeps a value that preserves its {{ param }}', () => {
+    assert.strictEqual(rejectTranslationWrite({ key: 'home.hi', value: 'Cześć {{ name }}' }, mainFlat, {}), undefined);
+  });
+
+  it('rejects a write that would trade an existing translation for a namespace', () => {
+    assert.strictEqual(
+      rejectTranslationWrite({ key: 'home.greeting.formal', value: 'Dzień dobry' }, mainFlat, { home: { greeting: 'Witaj' } }),
+      'key-conflict'
+    );
+  });
+
+  it('checks the conflict against the target language, not the main one', () => {
+    // en may already have restructured; pl still holds the string.
+    assert.strictEqual(
+      rejectTranslationWrite({ key: 'home.greeting.formal', value: 'x' }, mainFlat, { home: { greeting: { casual: 'Cześć' } } }),
+      undefined
+    );
+  });
+});
+
+describe('rejectKeyCreation', () => {
+  it('refuses a key that cannot be created without discarding a translation', () => {
+    assert.strictEqual(rejectKeyCreation('home.greeting.formal', { home: { greeting: 'Hello' } }), 'key-conflict');
+  });
+
+  it('refuses an invalid key', () => {
+    assert.strictEqual(rejectKeyCreation('__proto__.x', {}), 'invalid-key');
+    assert.strictEqual(rejectKeyCreation('trailing.', {}), 'invalid-key');
+  });
+
+  it('allows a fresh key', () => {
+    assert.strictEqual(rejectKeyCreation('home.welcome', { home: { greeting: 'Hello' } }), undefined);
+  });
+});
+
+describe('rejectionMessage', () => {
+  it('names the key in every reason', () => {
+    for (const reason of ['invalid-key', 'params-lost', 'key-conflict'] as const) {
+      assert.ok(rejectionMessage(reason, 'home.x').includes('home.x'), reason);
+    }
+  });
+});
+
+describe('planSeed conflicts', () => {
+  it('never trades a real translation for a placeholder', () => {
+    const plan = planSeed({ 'home.greeting.formal': 'Good day' }, { home: { greeting: 'Witaj' } }, '[TODO]', false);
+    assert.deepStrictEqual(plan, []);
+  });
+
+  it('still seeds keys that do not conflict', () => {
+    const plan = planSeed(
+      { 'home.greeting.formal': 'Good day', 'home.other': 'Other' },
+      { home: { greeting: 'Witaj' } },
+      '[TODO]',
+      false
+    );
+    assert.deepStrictEqual(plan, [{ key: 'home.other', value: '[TODO]' }]);
+  });
+
+  it('still replaces a placeholder sitting at the key itself when copying the source', () => {
+    const plan = planSeed({ 'a.b': 'Source' }, { a: { b: '[TODO]' } }, '[TODO]', true);
+    assert.deepStrictEqual(plan, [{ key: 'a.b', value: 'Source' }]);
   });
 });

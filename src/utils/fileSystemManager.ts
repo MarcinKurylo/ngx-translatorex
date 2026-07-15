@@ -3,8 +3,7 @@ import { TextDecoder, TextEncoder } from 'util';
 import { NotificationManager } from './notificationManager';
 import { ExtensionConfigManager } from './extensionConfigManager';
 import { TranslationTree, deleteKey, findUntranslatedKeys, flattenObject, renameKey, setKey, sortObject } from './translationUtils';
-import { paramsPreserved } from './translationLmUtils';
-import { planSeed } from './i18nToolUtils';
+import { planSeed, rejectTranslationWrite } from './i18nToolUtils';
 export class FileSystemManager {
 
   /** Flattened cache of the current language's translations, keyed by dotted key. */
@@ -305,35 +304,6 @@ export class FileSystemManager {
     }
   }
 
-  /**
-   * Writes a single key/value into one language file (creating nested subtrees as
-   * needed), used by the agent `setTranslation` tool. When the target is the main
-   * language, the flattened cache is updated too.
-   *
-   * @returns `true` on success, `false` when the language file is missing or the
-   * write fails.
-   */
-  public static async setTranslationForLanguage(language: string, key: string, value: string): Promise<boolean> {
-    try {
-      const uris = await FileSystemManager.getLanguageUris();
-      const uri = uris.find((candidate) => candidate.path.split('/').pop() === `${language}.json`);
-      if (!uri) {
-        NotificationManager.showErrorMessage(`No ${language}.json found in the i18n folder`);
-        return false;
-      }
-      const tree = await FileSystemManager.readJson(uri);
-      setKey(tree, key, value);
-      await FileSystemManager.writeJson(uri, tree);
-      if (language === (ExtensionConfigManager.getConfigValue('language') ?? 'en')) {
-        FileSystemManager.cache[key] = value;
-        FileSystemManager.onCacheChanged?.();
-      }
-      return true;
-    } catch (e) {
-      NotificationManager.showErrorMessage('Save json failed');
-      return false;
-    }
-  }
 
   /**
    * Writes many key/value translations across language files in one pass, reading
@@ -367,14 +337,14 @@ export class FileSystemManager {
         if (!uri) {
           continue;
         }
-        const source = mainFlat[item.key];
-        if (typeof source === 'string' && !paramsPreserved(source, item.value)) {
-          skipped++;
-          continue;
-        }
         const key = uri.toString();
         if (!trees.has(key)) {
           trees.set(key, { uri, tree: await FileSystemManager.readJson(uri) });
+        }
+        // Checked against the live tree, so earlier writes in this same batch count.
+        if (rejectTranslationWrite(item, mainFlat, trees.get(key)!.tree)) {
+          skipped++;
+          continue;
         }
         if (options.dryRun) {
           written++;
@@ -428,7 +398,7 @@ export class FileSystemManager {
           continue;
         }
         const tree = await FileSystemManager.readJson(uri);
-        const plan = planSeed(mainFlat, flattenObject(tree), placeholder, options.copySource ?? false);
+        const plan = planSeed(mainFlat, tree, placeholder, options.copySource ?? false);
         for (const entry of plan) {
           setKey(tree, entry.key, entry.value);
         }

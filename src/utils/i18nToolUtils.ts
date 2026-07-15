@@ -14,7 +14,8 @@ import {
   interpolationSnippet,
   normalizeInterpolation
 } from './hardcodedStringUtils';
-import { TranslationTree, findUntranslatedKeys, flattenObject } from './translationUtils';
+import { TranslationTree, findUntranslatedKeys, flattenObject, hasWriteConflict, isKeyValid } from './translationUtils';
+import { paramsPreserved } from './translationLmUtils';
 
 /**
  * Resolves a caller-supplied path against a root and returns it only when it
@@ -36,22 +37,91 @@ export function resolveContainedPath(root: string, file: string): string | undef
   return abs === base || abs.startsWith(base + path.sep) ? abs : undefined;
 }
 
+/** Why an agent's translation write was refused. */
+export type WriteRejection = 'invalid-key' | 'params-lost' | 'key-conflict';
+
+/**
+ * Whether an agent may create this key at all, checked against the main language
+ * before anything is written.
+ *
+ * Refusing here is what keeps a conflict from spreading: creating
+ * `home.greeting.formal` while `home.greeting` is a translated string discards
+ * that string, and then every secondary language is told the new key is missing —
+ * so the next write destroys their translation of `home.greeting` too. The agent
+ * chooses its own key names and cannot see that a name is taken, so it is told,
+ * and picks another.
+ */
+export function rejectKeyCreation(key: string, mainTree: TranslationTree): WriteRejection | undefined {
+  if (!isKeyValid(key, 'key')) {
+    return 'invalid-key';
+  }
+  return hasWriteConflict(mainTree, key) ? 'key-conflict' : undefined;
+}
+
+/** The agent-facing explanation for a refused key — identical on both surfaces. */
+export function rejectionMessage(reason: WriteRejection, key: string): string {
+  switch (reason) {
+    case 'invalid-key':
+      return `Key "${key}" is not a valid i18n key.`;
+    case 'params-lost':
+      return `The value for "${key}" drops or changes a {{ param }} from the main language.`;
+    case 'key-conflict':
+      return `Key "${key}" conflicts with an existing translation: a parent name already holds text, or the key is already a namespace. Pick another key.`;
+  }
+}
+
+/**
+ * The one rule set deciding whether an agent may write a translation. Both agent
+ * surfaces call this instead of each re-deriving the guards: they had drifted to
+ * three different answers — the extension's single-key tool checked nothing, its
+ * batch tool checked params only, and the MCP server checked params and the key.
+ *
+ * @returns the reason to skip the item, or `undefined` when it is safe to write.
+ */
+export function rejectTranslationWrite(
+  item: { key: string; value: string },
+  mainFlat: { [key: string]: string },
+  targetTree: TranslationTree
+): WriteRejection | undefined {
+  if (!isKeyValid(item.key, 'key')) {
+    return 'invalid-key';
+  }
+  const source = mainFlat[item.key];
+  if (typeof source === 'string' && !paramsPreserved(source, item.value)) {
+    return 'params-lost';
+  }
+  if (hasWriteConflict(targetTree, item.key)) {
+    return 'key-conflict';
+  }
+  return undefined;
+}
+
 /**
  * Plans a starting value for every key a secondary language still lacks
  * (missing, or holding the placeholder): either the placeholder itself, or a
  * copy of the main-language source when `copySource` is set. No-op writes (the
  * key already holds the intended value) are dropped so a seed run only reports
  * real changes. Pure — the caller writes the returned entries.
+ *
+ * A key conflicting with an existing translation is skipped: seeding
+ * `home.greeting.formal` into a language whose `home.greeting` is still the
+ * string "Witaj" cannot keep both, and quietly trading a real translation for a
+ * placeholder is the one thing seeding must not do. `setKey`'s `overwrite: false`
+ * cannot express this, because seeding *does* need to overwrite a placeholder
+ * sitting at the key itself — so the conflict is decided by
+ * {@link hasWriteConflict}, the same rule the write tools use.
  */
 export function planSeed(
   mainFlat: { [key: string]: string },
-  languageFlat: { [key: string]: string },
+  languageTree: TranslationTree,
   placeholder: string,
   copySource: boolean
 ): { key: string; value: string }[] {
+  const languageFlat = flattenObject(languageTree);
   return findUntranslatedKeys(mainFlat, languageFlat, placeholder)
     .map((key) => ({ key, value: copySource ? mainFlat[key] : placeholder }))
-    .filter((entry) => languageFlat[entry.key] !== entry.value);
+    .filter((entry) => languageFlat[entry.key] !== entry.value)
+    .filter((entry) => !hasWriteConflict(languageTree, entry.key));
 }
 
 /** One requested extraction: an exact text and the key to create for it. */

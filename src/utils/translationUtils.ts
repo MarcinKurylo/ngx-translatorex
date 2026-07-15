@@ -14,12 +14,29 @@ const isSubtree = (value: unknown): value is TranslationTree =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /**
+ * Key segments that address the prototype chain rather than a translation.
+ * Walking into one turns a write into prototype pollution: `tree['__proto__']`
+ * yields `Object.prototype`, which `isSubtree` accepts as a subtree, so a key
+ * like `__proto__.foo` would assign onto every object in the process.
+ */
+const FORBIDDEN_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Whether a dotted key is safe to walk. Keys reach the tree from agent tools
+ * (which name keys themselves) as well as from typed input, so this is enforced
+ * in the tree helpers rather than at each call site.
+ */
+const isSafeKey = (key: string): boolean =>
+  !key.split('.').some((segment) => FORBIDDEN_SEGMENTS.has(segment));
+
+/**
  * Validates a translation key for the given mode. A key may never start with a
- * dot or contain empty segments (`..`); in `key` mode it must also not end with
- * a dot (in `scope` mode a trailing dot is allowed, the slug is appended later).
+ * dot, contain empty segments (`..`), or address the prototype chain; in `key`
+ * mode it must also not end with a dot (in `scope` mode a trailing dot is
+ * allowed, the slug is appended later).
  */
 export function isKeyValid(key: string, mode: Mode): boolean {
-  const base = !key.startsWith('.') && !key.includes('..');
+  const base = !key.startsWith('.') && !key.includes('..') && isSafeKey(key);
   return mode === 'key' ? base && !key.endsWith('.') : base;
 }
 
@@ -40,6 +57,9 @@ export function setKey(
   value: string,
   options: { overwrite?: boolean } = {}
 ): { overwritten: boolean; written: boolean } {
+  if (!isSafeKey(key)) {
+    return { overwritten: false, written: false };
+  }
   const overwrite = options.overwrite ?? true;
   const [head, ...rest] = key.split('.');
   if (rest.length === 0) {
@@ -63,6 +83,9 @@ export function setKey(
  * subtree — or `undefined` when the key does not exist.
  */
 export function getNode(tree: TranslationTree, key: string): string | TranslationTree | undefined {
+  if (!isSafeKey(key)) {
+    return undefined;
+  }
   const [head, ...rest] = key.split('.');
   const child = tree[head];
   if (rest.length === 0) {
@@ -78,6 +101,9 @@ export function getNode(tree: TranslationTree, key: string): string | Translatio
  * without discarding nested content.
  */
 export function setNode(tree: TranslationTree, key: string, node: string | TranslationTree): void {
+  if (!isSafeKey(key)) {
+    return;
+  }
   const [head, ...rest] = key.split('.');
   if (rest.length === 0) {
     tree[head] = node;
@@ -96,6 +122,9 @@ export function setNode(tree: TranslationTree, key: string, node: string | Trans
  * @returns `true` when a node was removed, `false` when the key did not exist.
  */
 export function deleteKey(tree: TranslationTree, key: string): boolean {
+  if (!isSafeKey(key)) {
+    return false;
+  }
   const [head, ...rest] = key.split('.');
   if (!(head in tree)) {
     return false;

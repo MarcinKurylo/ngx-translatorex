@@ -13,9 +13,9 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { TranslationTree, findUntranslatedKeys, flattenObject, setKey, sortObject } from '../../src/utils/translationUtils';
+import { TranslationTree, findUntranslatedKeys, flattenObject, isKeyValid, setKey, sortObject } from '../../src/utils/translationUtils';
 import { applyExtractionToText, findHardcodedStrings, interpolationSnippet, locateHardcodedStrings, normalizeInterpolation } from '../../src/utils/hardcodedStringUtils';
-import { findContainingCandidate, planFileExtractions, planSeed } from '../../src/utils/i18nToolUtils';
+import { findContainingCandidate, planFileExtractions, planSeed, resolveContainedPath } from '../../src/utils/i18nToolUtils';
 import { paramsPreserved } from '../../src/utils/translationLmUtils';
 import { findTranslateKeys } from '../../src/utils/diagnosticsUtils';
 import { ListMissingOptions, MissingDetail, MissingSummary, UntranslatedItem, shapeMissingTranslations } from '../../src/utils/i18nToolUtils';
@@ -44,6 +44,39 @@ const DETECTION = {
   ignore: parseList(process.env.NGX_HARDCODED_IGNORE)
 };
 
+/**
+ * Turns a caller-supplied template path into an absolute one inside the project,
+ * or throws so the tool call fails loudly.
+ *
+ * Every `file` argument reaching these tools comes from the agent, which is not
+ * a trusted source: the text the agent is reasoning over is scanned out of the
+ * project's own templates, so a template can carry an instruction that steers it
+ * into passing a path of its own. This is the only sanctioned way to turn such a
+ * path into a file handle.
+ *
+ * Refusing loudly rather than skipping silently is deliberate — a quiet skip
+ * looks identical to "no occurrences found" and would hide the attempt. The
+ * `.html` restriction matches what the tool schemas already declare, and keeps a
+ * single-file call in step with the all-templates walk, which only ever yields
+ * `.html`.
+ */
+const contain = (file: string): string => {
+  const abs = resolveContainedPath(PROJECT_DIR, file);
+  if (!abs || !abs.endsWith('.html')) {
+    throw new Error(`Refused "${file}": expected a project-relative .html path inside the project root.`);
+  }
+  if (!fs.existsSync(abs)) {
+    return abs; // Containment already proven lexically; the caller reports "not found".
+  }
+  // Follow symlinks before the real check — a link inside the project could
+  // point out of it. The root is resolved too, since it may itself be a link.
+  const real = resolveContainedPath(fs.realpathSync(PROJECT_DIR), fs.realpathSync(abs));
+  if (!real) {
+    throw new Error(`Refused "${file}": it links outside the project root.`);
+  }
+  return real;
+};
+
 const languageFile = (language: string) => path.join(I18N_DIR, `${language}.json`);
 
 const readTree = (language: string): TranslationTree => {
@@ -66,7 +99,24 @@ export const listLanguages = (): string[] =>
     ? fs.readdirSync(I18N_DIR).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5))
     : [];
 
-/** Files with any of the given extensions under the project root, excluding build/dependency folders. */
+/** Whether a symlinked entry resolves to a target that is still inside the project. */
+const linkStaysInside = (full: string): boolean => {
+  try {
+    return resolveContainedPath(fs.realpathSync(PROJECT_DIR), fs.realpathSync(full)) !== undefined;
+  } catch {
+    return false; // Broken link — nothing to read anyway.
+  }
+};
+
+/**
+ * Files with any of the given extensions under the project root, excluding
+ * build/dependency folders.
+ *
+ * A symlinked file is only walked when its target is inside the project: the
+ * walk feeds file contents to the agent, so an in-repo link to somewhere else on
+ * disk (git tracks symlinks, so one can arrive in a pull request) would leak it.
+ * This is the same rule `contain` applies to an explicitly passed path.
+ */
 const walk = (extensions: string[], dir = PROJECT_DIR): string[] => {
   const out: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -76,7 +126,9 @@ const walk = (extensions: string[], dir = PROJECT_DIR): string[] => {
         out.push(...walk(extensions, full));
       }
     } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
-      out.push(full);
+      if (!entry.isSymbolicLink() || linkStaysInside(full)) {
+        out.push(full);
+      }
     }
   }
   return out;
@@ -90,7 +142,7 @@ const listSourceFiles = (): string[] => walk(['.html', '.ts']);
 
 /** Scans one template (relative path) or all templates for hard-coded strings. */
 export const scan = (file?: string): { file: string; line: number; text: string; category: string; confidence: string }[] => {
-  const files = file ? [path.resolve(PROJECT_DIR, file)] : listTemplates();
+  const files = file ? [contain(file)] : listTemplates();
   const findings: { file: string; line: number; text: string; category: string; confidence: string }[] = [];
   for (const abs of files) {
     if (!fs.existsSync(abs)) {
@@ -115,7 +167,7 @@ export const scan = (file?: string): { file: string; line: number; text: string;
  * main language, placeholder elsewhere).
  */
 export const extract = (file: string, text: string, key: string): { key: string; extracted: number; params?: string[]; message?: string; partial?: boolean; containingText?: string } => {
-  const abs = path.resolve(PROJECT_DIR, file);
+  const abs = contain(file);
   if (!fs.existsSync(abs)) {
     return { key, extracted: 0, message: `File not found: ${file}` };
   }
@@ -182,7 +234,7 @@ export const extractStrings = (
   const perFile = new Map<string, { text: string; key: string; item: number }[]>();
   items.forEach((item, index) => {
     const files = item.files?.length
-      ? item.files.map((file) => path.resolve(PROJECT_DIR, file)).filter((abs) => fs.existsSync(abs))
+      ? item.files.map((file) => contain(file)).filter((abs) => fs.existsSync(abs))
       : templates;
     for (const abs of files) {
       const list = perFile.get(abs) ?? [];
@@ -268,6 +320,12 @@ export const setTranslations = (
   let skipped = 0;
   for (const item of items) {
     if (!known.has(item.language)) {
+      continue;
+    }
+    // The agent names its own keys; run them through the same validation the
+    // interactive path uses instead of trusting them into the tree.
+    if (!isKeyValid(item.key, 'key')) {
+      skipped++;
       continue;
     }
     const source = mainFlat[item.key];

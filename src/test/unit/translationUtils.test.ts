@@ -378,6 +378,31 @@ describe('renameParams', () => {
     assert.ok(result.includes('{{ first }}'));
     assert.ok(result.includes('{{ two }}'));
   });
+
+  it('renames the placeholder at the given position, not the first identical one', () => {
+    // Matching by text renamed the greeting and left the farewell alone —
+    // exactly inverted, so each param bound to the wrong source expression.
+    const result = renameParams('Hi {{ name }}, bye {{ name }}', ['', 'farewell']);
+    assert.match(result, /^Hi \{\{ name \}\}, bye\s+\{\{ farewell \}\}\s*$/);
+  });
+
+  it('renames every position when a param repeats three times', () => {
+    const result = renameParams('{{ x }} {{ x }} {{ x }}', ['a', 'b', 'c']);
+    const names = [...result.matchAll(/\{\{ (\w+) \}\}/g)].map((match) => match[1]);
+    assert.deepStrictEqual(names, ['a', 'b', 'c']);
+  });
+
+  it('keeps later placeholders correct when an earlier rename changes the length', () => {
+    const result = renameParams('{{ a }} then {{ b }}', ['muchLongerName', 'second']);
+    const names = [...result.matchAll(/\{\{ (\w+) \}\}/g)].map((match) => match[1]);
+    assert.deepStrictEqual(names, ['muchLongerName', 'second']);
+  });
+
+  it('skips a falsy name without consuming that position', () => {
+    const result = renameParams('{{ a }} {{ b }}', ['', 'renamed']);
+    const names = [...result.matchAll(/\{\{ (\w+) \}\}/g)].map((match) => match[1]);
+    assert.deepStrictEqual(names, ['a', 'renamed']);
+  });
 });
 
 describe('isKeyValid', () => {

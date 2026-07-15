@@ -15,12 +15,23 @@ export interface TranslateKeyReference {
 }
 
 /**
+ * The characters a translation key is read back with. This has to cover
+ * everything `generateKey` can *produce*, or a key becomes invisible to every
+ * consumer of {@link findTranslateKeys} — and an invisible key is not merely
+ * unhelpful: `Clean unused i18n keys` classifies it as unused and offers it for
+ * deletion, pre-selected. `generateKey` slugifies the selected text and does not
+ * strip letters, so any non-ASCII UI copy ("Wyślij zgłoszenie" → `wyślij_zgłoszenie`)
+ * lands here. Hence Unicode letters/digits rather than `A-Za-z0-9`.
+ */
+const KEY_CHARS = String.raw`[\p{L}\p{N}_.]+`;
+
+/**
  * Matches a quoted key immediately followed by the `translate` pipe, e.g.
  * `'home.title' | translate` — including inside attribute bindings and with pipe
  * arguments. A lookahead keeps the match ending at the key so its offset is
  * simple to compute.
  */
-const HTML_KEY = /(['"])([A-Za-z0-9_.]+)(?=\1\s*\|\s*translate)/g;
+const HTML_KEY = new RegExp(String.raw`(['"])(${KEY_CHARS})(?=\1\s*\|\s*translate)`, 'gu');
 
 /**
  * Matches a `TranslateService` call with a string-literal key, e.g.
@@ -28,7 +39,10 @@ const HTML_KEY = /(['"])([A-Za-z0-9_.]+)(?=\1\s*\|\s*translate)/g;
  * receiver must contain `translate` so generic `.get(...)` calls (Angular forms,
  * maps, HTTP) are not flagged.
  */
-const TS_KEY = /\w*translate\w*\.(?:instant|get|stream)\(\s*(['"])([A-Za-z0-9_.]+)(?=\1)/gi;
+const TS_KEY = new RegExp(
+  String.raw`\w*translate\w*\.(?:instant|get|stream)\(\s*(['"])(${KEY_CHARS})(?=\1)`,
+  'giu'
+);
 
 /**
  * Finds every ngx-translate key referenced in the given text for the given
